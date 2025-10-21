@@ -12,6 +12,10 @@ export default defineConfig({
         v3_singleFetch: true,
         v3_throwAbortReason: true,
       },
+      serverModuleFormat: "esm",
     }),
   ],
+  ssr: {
+    noExternal: ["@mantine/core", "@mantine/hooks"],
+  },
 });
