@@ -1,0 +1,11 @@
+{
+    "name": "Radio Passport",
+    "short_name": "Radio Passport",
+    "description": "Tune Into the World - A cozy web audio app for global radio exploration",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#1e1b4b",
+    "theme_color": "#1e1b4b",
+    "orientation": "portrait-primary",
+    "icons": []
+}
