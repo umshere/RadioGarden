@@ -8,14 +8,12 @@ import {
   useSearchParams,
   useSubmit,
 } from "@remix-run/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentType, CSSProperties } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Badge,
   Text,
-  Group,
-  Stack,
   ActionIcon,
   Input,
   Avatar,
@@ -107,6 +105,122 @@ import {
   IconMapPin,
   IconGlobe,
 } from "@tabler/icons-react";
+
+const BRAND = Object.freeze({
+  ocean: "#013A63",
+  beige: "#F4EDE0",
+  stamp: "#D1495B",
+  teal: "#5C9EAD",
+});
+
+const HERO_TAGLINES = [
+  "Every country, one click away — your global radio passport.",
+  "Stamp your way through the world’s soundscapes.",
+  "Where every station is a new destination.",
+] as const;
+
+const HERO_PREVIEW_FALLBACKS: Array<Pick<Station, "name" | "country" | "language" | "tags">> = [
+  {
+    name: "Lisbon Atlantic FM",
+    country: "Portugal",
+    language: "Portuguese",
+    tags: "Sunrise grooves & maritime jazz",
+  },
+  {
+    name: "Kyoto Night Signals",
+    country: "Japan",
+    language: "Japanese",
+    tags: "Ambient downtempo for evening trains",
+  },
+  {
+    name: "Brooklyn Skyline Radio",
+    country: "United States",
+    language: "English",
+    tags: "Lo-fi beats & borough stories",
+  },
+];
+
+function PassportStampIcon({
+  size = 72,
+  animated = true,
+}: {
+  size?: number;
+  animated?: boolean;
+}) {
+  const gradientId = useMemo(
+    () => `passport-glow-${Math.random().toString(36).slice(2, 9)}`,
+    []
+  );
+
+  const motionProps = animated
+    ? {
+        animate: { rotate: [-3, 3, -3], scale: [0.97, 1, 0.97] },
+        transition: {
+          duration: 12,
+          repeat: Infinity,
+          repeatType: "mirror" as const,
+          ease: [0.42, 0, 0.58, 1] as const,
+        },
+      }
+    : {};
+
+  return (
+    <motion.svg
+      width={size}
+      height={size}
+      viewBox="0 0 120 120"
+      fill="none"
+      aria-hidden="true"
+      style={{ filter: "drop-shadow(0 18px 32px rgba(1,26,55,0.36))" }}
+      {...motionProps}
+    >
+      <defs>
+        <radialGradient id={gradientId} cx="50%" cy="50%" r="48%">
+          <stop offset="0%" stopColor={BRAND.teal} stopOpacity="0.92" />
+          <stop offset="55%" stopColor={BRAND.ocean} stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#031A33" stopOpacity="1" />
+        </radialGradient>
+      </defs>
+      <circle
+        cx="60"
+        cy="60"
+        r="50"
+        fill={`url(#${gradientId})`}
+        stroke={BRAND.beige}
+        strokeWidth="3.2"
+        strokeDasharray="7 5"
+      />
+      <circle
+        cx="60"
+        cy="60"
+        r="38"
+        fill="none"
+        stroke={BRAND.stamp}
+        strokeWidth="2.4"
+        strokeDasharray="4 6"
+        strokeLinecap="round"
+        opacity="0.92"
+      />
+      <path
+        d="M28 60c8.1-11.6 17.7-17.4 32-17.4 14.3 0 23.9 5.8 32 17.4-8.1 11.6-17.7 17.4-32 17.4-14.3 0-24-5.8-32-17.4z"
+        stroke={BRAND.beige}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <path
+        d="M34 46.3c7.2 4.6 15.5 7 26 7s18.8-2.4 26-7M34 73.7c7.2-4.6 15.5-7 26-7s18.8 2.4 26 7"
+        stroke={BRAND.teal}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.85"
+      />
+      <circle cx="60" cy="60" r="8" fill={BRAND.stamp} />
+    </motion.svg>
+  );
+}
 
 /**
  * Radio Browser base. Use a specific mirror for speed; you can rotate later.
@@ -238,8 +352,21 @@ function CountryFlag({
 }
 
 export default function Index() {
-  const { countries, stations, selectedCountry } = useLoaderData<typeof loader>();
+  const {
+    countries,
+    stations: loaderStations,
+    selectedCountry: loaderSelectedCountry,
+  } = useLoaderData<typeof loader>();
   const [sp] = useSearchParams();
+  const countryParam = sp.get("country");
+  const loaderMatchesSearch =
+    (countryParam ?? null) === (loaderSelectedCountry ?? null);
+  const selectedCountry: string | null = loaderMatchesSearch
+    ? loaderSelectedCountry
+    : null;
+  const stations: Station[] = loaderMatchesSearch ? loaderStations : [];
+  const isCountryRoute = Boolean(countryParam);
+  const isCountryViewPending = isCountryRoute && !loaderMatchesSearch;
   const submit = useSubmit();
   const navigate = useNavigate();
   const navigation = useNavigation();
@@ -255,6 +382,11 @@ export default function Index() {
   const autoPlayRef = useRef(false);
   const [hasDismissedPlayer, setHasDismissedPlayer] = useState(false);
   const [showNavigationIndicator, setShowNavigationIndicator] = useState(false);
+  const [heroHovered, setHeroHovered] = useState(false);
+  const [heroTaglineIndex, setHeroTaglineIndex] = useState(0);
+  const [heroTickerIndex, setHeroTickerIndex] = useState(0);
+  const hoverAudioContextRef = useRef<AudioContext | null>(null);
+  const hoverNoiseRef = useRef<(() => void) | null>(null);
 
   const topCountries = useMemo(
     () => [...countries].sort((a, b) => b.stationcount - a.stationcount).slice(0, 80),
@@ -278,7 +410,216 @@ export default function Index() {
 
   const continents = Object.keys(continentData).sort();
 
+  const floatingStamps = useMemo<
+    Array<{ id: string; style: CSSProperties; delay: number }>
+  >(
+    () => [
+      {
+        id: "stamp-top-left",
+        style: { top: "-3.5rem", left: "-3rem" },
+        delay: 0,
+      },
+      {
+        id: "stamp-bottom-right",
+        style: { bottom: "-3.25rem", right: "8%" },
+        delay: 2.6,
+      },
+      {
+        id: "stamp-mid-right",
+        style: { top: "32%", right: "-3.75rem" },
+        delay: 4.2,
+      },
+    ],
+    []
+  );
+
+  const heroTickerItems = useMemo(() => {
+    const headlineCountry = topCountries[0]?.name ?? "Global";
+    const base = [
+      `${totalStations.toLocaleString()} verified stations ready to tune`,
+      `${continents.length} continents on the dial`,
+      `Spotlight • ${headlineCountry}`,
+    ];
+
+    if (nowPlaying) {
+      base.unshift(`Now playing • ${nowPlaying.name} — ${nowPlaying.country}`);
+    }
+
+    return base;
+  }, [continents.length, nowPlaying, topCountries, totalStations]);
+
+  const currentHeroTicker = heroTickerItems.length
+    ? heroTickerItems[heroTickerIndex % heroTickerItems.length]
+    : "Global radio passport updates";
+
+  const heroPreviewStation = useMemo<
+    Station | Pick<Station, "name" | "country" | "language" | "tags">
+  >(() => {
+    if (nowPlaying) {
+      return nowPlaying;
+    }
+
+    const fallbackIndex = heroTickerIndex % HERO_PREVIEW_FALLBACKS.length;
+    const fallback =
+      HERO_PREVIEW_FALLBACKS[fallbackIndex] ?? HERO_PREVIEW_FALLBACKS[0];
+
+    return fallback as Pick<Station, "name" | "country" | "language" | "tags">;
+  }, [heroTickerIndex, nowPlaying]);
+
+  const heroPreviewCountryMeta = heroPreviewStation
+    ? countryMap.get(heroPreviewStation.country) ?? null
+    : null;
+
+  const heroPreviewFavicon =
+    typeof heroPreviewStation === "object" && "favicon" in heroPreviewStation
+      ? (heroPreviewStation.favicon as string | undefined)
+      : undefined;
+
+  const currentContinent = selectedCountry
+    ? getContinent(countryMap.get(selectedCountry)?.iso_3166_1)
+    : nowPlaying
+    ? getContinent(countryMap.get(nowPlaying.country)?.iso_3166_1)
+    : null;
+
+  const [selectedContinent, setSelectedContinent] = useState<string | null>(
+    currentContinent ?? null
+  );
+
+  useEffect(() => {
+    if (currentContinent && selectedContinent !== currentContinent) {
+      setSelectedContinent(currentContinent);
+    }
+  }, [currentContinent, selectedContinent]);
+
+  const countriesInContinent = selectedContinent
+    ? continentData[selectedContinent] ?? []
+    : [];
+
   const isRouteTransitioning = navigation.state !== "idle";
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setHeroTaglineIndex((prev) => (prev + 1) % HERO_TAGLINES.length);
+    }, 6400);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (heroTickerItems.length === 0) return;
+
+    const interval = window.setInterval(() => {
+      setHeroTickerIndex((prev) => (prev + 1) % heroTickerItems.length);
+    }, 4200);
+
+    return () => window.clearInterval(interval);
+  }, [heroTickerItems.length]);
+
+  useEffect(() => {
+    setHeroTickerIndex(0);
+  }, [heroTickerItems.length]);
+
+  const triggerHoverStatic = useCallback(async () => {
+    if (typeof window === "undefined") return;
+
+    const AudioContextConstructor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+    if (!AudioContextConstructor) {
+      return;
+    }
+
+    if (!hoverAudioContextRef.current) {
+      hoverAudioContextRef.current = new AudioContextConstructor();
+    }
+
+    const context = hoverAudioContextRef.current;
+    if (!context) return;
+
+    if (!hoverNoiseRef.current) {
+      hoverNoiseRef.current = () => {
+        const duration = 0.32;
+        const buffer = context.createBuffer(1, Math.ceil(context.sampleRate * duration), context.sampleRate);
+        const channel = buffer.getChannelData(0);
+        for (let i = 0; i < channel.length; i += 1) {
+          const decay = 1 - i / channel.length;
+          channel[i] = (Math.random() * 2 - 1) * Math.pow(decay, 1.6) * 0.4;
+        }
+
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+
+        const filter = context.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 1150;
+        filter.Q.value = 1.8;
+
+        const gain = context.createGain();
+        gain.gain.value = 0.12;
+
+        source.connect(filter).connect(gain).connect(context.destination);
+        source.start();
+        source.stop(context.currentTime + duration);
+      };
+    }
+
+    if (context.state === "suspended") {
+      try {
+        await context.resume();
+      } catch {
+        return;
+      }
+    }
+
+    hoverNoiseRef.current?.();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const context = hoverAudioContextRef.current;
+      if (context) {
+        context.close().catch(() => undefined);
+        hoverAudioContextRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleStartListening = useCallback(() => {
+    if (typeof document === "undefined") return;
+
+    setActiveContinent(null);
+    setSelectedContinent(null);
+
+    const atlasSection = document.getElementById("atlas");
+    atlasSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const handleExploreRegions = useCallback(() => {
+    if (typeof document === "undefined") return;
+
+    setShowRegionPicker(true);
+    setActiveContinent(null);
+    setSelectedContinent(null);
+    const filterRow = document.getElementById("atlas-filters");
+    filterRow?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const handleBackToWorldView = useCallback(() => {
+    autoPlayRef.current = false;
+    setNowPlaying(null);
+    setIsPlaying(false);
+    setHasDismissedPlayer(true);
+    setShowRegionPicker(false);
+    setActiveContinent(null);
+    setSelectedContinent(null);
+    navigate("/", { preventScrollReset: true });
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+  }, [navigate]);
 
   useEffect(() => {
     let timeoutId: number | undefined;
@@ -301,26 +642,6 @@ export default function Index() {
       }
     };
   }, [isRouteTransitioning]);
-
-  const currentContinent = selectedCountry
-    ? getContinent(countryMap.get(selectedCountry)?.iso_3166_1)
-    : nowPlaying
-    ? getContinent(countryMap.get(nowPlaying.country)?.iso_3166_1)
-    : null;
-
-  const [selectedContinent, setSelectedContinent] = useState<string | null>(
-    currentContinent ?? null
-  );
-
-  useEffect(() => {
-    if (currentContinent && selectedContinent !== currentContinent) {
-      setSelectedContinent(currentContinent);
-    }
-  }, [currentContinent, selectedContinent]);
-
-  const countriesInContinent = selectedContinent
-    ? continentData[selectedContinent] ?? []
-    : [];
 
   useEffect(() => {
     if (selectedCountry || nowPlaying || topCountries.length === 0 || hasDismissedPlayer) {
@@ -504,28 +825,22 @@ export default function Index() {
   };
 
   return (
-    <div className="app-bg relative min-h-screen text-slate-100">
+    <div 
+      className="app-bg relative min-h-screen text-slate-100"
+      style={{
+        backgroundImage: 'url(/texture.png)',
+        backgroundRepeat: 'repeat',
+        backgroundSize: '400px 400px',
+      }}
+    >
       <header className="nav-shell">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-8">
           <Link to="/" className="flex items-center gap-3 text-sm font-semibold text-slate-100">
-            <Avatar
-              src="/icon.png"
-              alt="Radio Passport icon"
-              size={44}
-              radius="xl"
-              styles={{
-                root: {
-                  background: "linear-gradient(140deg, rgba(24,37,63,0.9) 0%, rgba(15,23,42,0.9) 100%)",
-                  border: "1px solid rgba(199, 158, 73, 0.45)",
-                  boxShadow: "0 12px 28px rgba(5, 11, 25, 0.4)",
-                  padding: 6,
-                },
-                image: {
-                  borderRadius: "9999px",
-                },
-              }}
-            />
-            <span className="hidden text-lg tracking-tight md:block">Radio Passport</span>
+            <PassportStampIcon size={48} animated={false} />
+            <div className="hidden md:flex md:flex-col">
+              <span className="hero-wordmark text-lg leading-tight">Radio Passport</span>
+              <span className="logo-subtitle">Sound atlas</span>
+            </div>
           </Link>
           <nav className="flex items-center gap-1">
             <Link
@@ -550,11 +865,12 @@ export default function Index() {
             radius="xl"
             size="md"
             style={{
-              background: "linear-gradient(120deg, rgba(199,158,73,0.85) 0%, rgba(148,113,51,0.85) 100%)",
-              color: "#0f172a",
-              border: "1px solid rgba(254, 250, 226, 0.65)",
+              background: "rgba(209, 73, 91, 0.18)",
+              color: BRAND.beige,
+              border: "1px solid rgba(209, 73, 91, 0.4)",
               fontWeight: 600,
-              letterSpacing: 0.3,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
             }}
           >
             Live beta
@@ -566,150 +882,323 @@ export default function Index() {
         className="relative z-10 mx-auto max-w-6xl px-4 pb-32 pt-12 md:px-8"
         {...swipeHandlers}
       >
-        {!selectedCountry ? (
+        {isCountryViewPending ? (
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="hero-surface flex flex-col items-center gap-6 px-6 py-12 text-center md:px-10"
+          >
+            <motion.div
+              className="flex items-center justify-center"
+              animate={{ rotate: [0, 360] }}
+              transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
+            >
+              <PassportStampIcon size={82} />
+            </motion.div>
+            <div className="space-y-2">
+              <Title order={2} style={{ color: BRAND.beige }}>
+                Retuning the atlas
+              </Title>
+              <Text size="sm" c="rgba(244,237,224,0.65)">
+                Hold tight while we load that region’s soundscapes.
+              </Text>
+            </div>
+          </motion.section>
+        ) : !selectedCountry ? (
           <>
             <motion.section
               id="explore"
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="hero-surface px-6 py-8 md:px-10 md:py-12"
+              className="hero-surface brand-hero px-6 py-10 md:px-10 md:py-14"
+              onPointerEnter={() => setHeroHovered(true)}
+              onPointerLeave={() => setHeroHovered(false)}
+              style={{
+                backgroundImage: 'linear-gradient(rgba(1, 26, 55, 0.85), rgba(1, 26, 55, 0.75)), url(/RG-HERO.png)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundBlendMode: 'normal',
+              }}
             >
+              <div className="brand-hero__globe">
+                <span className="brand-hero__globe-ring" />
+              </div>
+              {floatingStamps.map((stamp) => (
+                <motion.div
+                  key={stamp.id}
+                  className="hero-floating-stamp"
+                  style={stamp.style}
+                  animate={
+                    heroHovered
+                      ? { opacity: 0.72, x: 8, y: -6 }
+                      : { opacity: 0.38, x: 0, y: 0 }
+                  }
+                  transition={{
+                    duration: 6.2,
+                    delay: stamp.delay,
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    ease: [0.25, 0.1, 0.25, 1],
+                  }}
+                >
+                  <PassportStampIcon size={64} animated={false} />
+                </motion.div>
+              ))}
               <div className="relative z-10 flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
-                <div className="max-w-xl space-y-6">
-                  <Badge
-                    radius="xl"
-                    size="md"
-                    leftSection={<IconHeadphones size={16} />}
-                    style={{
-                      background: "rgba(199, 158, 73, 0.18)",
-                      border: "1px solid rgba(199, 158, 73, 0.45)",
-                      color: "#fefae0",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: 1.2,
-                    }}
+                <div className="max-w-xl space-y-8">
+                  <motion.span
+                    className="brand-hero__ticker"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
                   >
-                    Global radio atlas
-                  </Badge>
-                  <div className="space-y-4">
+                    <span className="brand-hero__ticker-icon">
+                      <IconCompass size={16} />
+                    </span>
+                    <AnimatePresence initial={false} mode="wait">
+                      <motion.span
+                        key={currentHeroTicker}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.32, ease: [0.42, 0, 0.58, 1] }}
+                      >
+                        {currentHeroTicker}
+                      </motion.span>
+                    </AnimatePresence>
+                  </motion.span>
+                  <div className="space-y-6">
                     <div className="flex items-center gap-4">
-                      <Avatar
-                        src="/icon.png"
-                        alt="Radio Passport emblem"
-                        size={60}
-                        radius="xl"
-                        styles={{
-                          root: {
-                            background: "linear-gradient(140deg, rgba(24,37,63,0.9) 0%, rgba(15,23,42,0.9) 100%)",
-                            border: "1px solid rgba(199, 158, 73, 0.45)",
-                            boxShadow: "0 12px 28px rgba(5, 11, 25, 0.4)",
-                            padding: 8,
-                          },
-                          image: {
-                            borderRadius: "9999px",
-                          },
-                        }}
-                      />
-                      <Title order={1} style={{ fontSize: "2.75rem", fontWeight: 700, lineHeight: 1.15 }}>
-                        Tune into the world, one passport stamp at a time.
-                      </Title>
+                      <PassportStampIcon size={92} />
+                      <div>
+                        <motion.span
+                          className="hero-wordmark text-4xl md:text-5xl"
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, ease: "easeOut", delay: 0.18 }}
+                        >
+                          Radio Passport
+                        </motion.span>
+                        <span className="logo-subtitle mt-2 inline-block">
+                          Global sound atlas
+                        </span>
+                      </div>
                     </div>
-                    <Text size="lg" c="rgba(226,232,240,0.72)" style={{ lineHeight: 1.6 }}>
-                      Discover broadcast gems from every corner of the globe with a calm, curated interface
-                      that feels like leafing through a well-traveled journal.
-                    </Text>
+                    <AnimatePresence initial={false} mode="wait">
+                      <motion.h1
+                        key={HERO_TAGLINES[heroTaglineIndex]}
+                        className="text-2xl font-semibold text-slate-100 md:text-[2.45rem] md:leading-tight"
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -16 }}
+                        transition={{ duration: 0.5, ease: [0.42, 0, 0.58, 1] }}
+                      >
+                        {HERO_TAGLINES[heroTaglineIndex]}
+                      </motion.h1>
+                    </AnimatePresence>
+                    <motion.p
+                      className="text-base leading-relaxed text-slate-100/80 md:text-lg"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.55, ease: [0.42, 0, 0.58, 1], delay: 0.28 }}
+                    >
+                      Chart a calm, exploratory ride through world radio with layered textures,
+                      analog warmth, and a sense of journey tuned into every interaction.
+                    </motion.p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-white/5 bg-white/5 p-4">
-                      <Text size="xs" c="rgba(226,232,240,0.6)" fw={500}>
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      className="cta-primary"
+                      onClick={handleStartListening}
+                      onMouseEnter={triggerHoverStatic}
+                      onFocus={triggerHoverStatic}
+                    >
+                      <IconHeadphones size={18} />
+                      Start Listening
+                    </button>
+                    <button
+                      type="button"
+                      className="cta-secondary"
+                      onClick={handleExploreRegions}
+                    >
+                      <IconCompass size={18} />
+                      Explore Regions
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-6 sm:grid-cols-3">
+                    <div
+                      className="rounded-2xl border p-4"
+                      style={{
+                        background: "rgba(2, 27, 47, 0.65)",
+                        borderColor: "rgba(92, 158, 173, 0.28)",
+                        backdropFilter: "blur(14px)",
+                      }}
+                    >
+                      <Text size="xs" c="rgba(244,237,224,0.7)" fw={600}>
                         Countries featured
                       </Text>
-                      <Text size="xl" fw={700}>
+                      <Text size="xl" fw={700} c={BRAND.beige}>
                         {topCountries.length.toLocaleString()}
                       </Text>
                     </div>
-                    <div className="rounded-2xl border border-white/5 bg-white/5 p-4">
-                      <Text size="xs" c="rgba(226,232,240,0.6)" fw={500}>
+                    <div
+                      className="rounded-2xl border p-4"
+                      style={{
+                        background: "rgba(2, 27, 47, 0.65)",
+                        borderColor: "rgba(92, 158, 173, 0.28)",
+                        backdropFilter: "blur(14px)",
+                      }}
+                    >
+                      <Text size="xs" c="rgba(244,237,224,0.7)" fw={600}>
                         Stations tracked
                       </Text>
-                      <Text size="xl" fw={700}>
+                      <Text size="xl" fw={700} c={BRAND.beige}>
                         {totalStations.toLocaleString()}
                       </Text>
                     </div>
-                    <div className="rounded-2xl border border-white/5 bg-white/5 p-4">
-                      <Text size="xs" c="rgba(226,232,240,0.6)" fw={500}>
+                    <div
+                      className="rounded-2xl border p-4"
+                      style={{
+                        background: "rgba(2, 27, 47, 0.65)",
+                        borderColor: "rgba(92, 158, 173, 0.28)",
+                        backdropFilter: "blur(14px)",
+                      }}
+                    >
+                      <Text size="xs" c="rgba(244,237,224,0.7)" fw={600}>
                         Continents covered
                       </Text>
-                      <Text size="xl" fw={700}>
+                      <Text size="xl" fw={700} c={BRAND.beige}>
                         {continents.length}
                       </Text>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-white/8 bg-white/5 p-6 backdrop-blur">
-                  <Text size="sm" c="rgba(226,232,240,0.65)" fw={500}>
-                    Search across the atlas
-                  </Text>
-                  <Form method="get" onChange={(event) => submit(event.currentTarget)}>
-                    <Input
-                      name="q"
-                      placeholder="Search countries"
-                      size="md"
-                      radius="xl"
-                      defaultValue={searchQueryRaw}
-                      leftSection={<IconSearch size={18} stroke={1.6} />}
-                      styles={{
-                        input: {
-                          background: "rgba(6, 13, 27, 0.55)",
-                          borderColor: "rgba(148, 163, 184, 0.25)",
-                          color: "#f8fafc",
-                          fontWeight: 500,
-                          "&:focus": {
-                            borderColor: "rgba(199, 158, 73, 0.55)",
-                            boxShadow: "0 0 0 3px rgba(199, 158, 73, 0.18)",
+                <div className="flex w-full max-w-sm flex-col gap-5">
+                  <div className="hero-mini-player">
+                    <span className="hero-mini-player__badge">Passport preview</span>
+                    <div className="mt-4 flex items-start gap-4">
+                      {heroPreviewFavicon ? (
+                        <Avatar
+                          src={heroPreviewFavicon}
+                          alt={`${heroPreviewStation.name} artwork`}
+                          size={60}
+                          radius="xl"
+                          style={{ border: "1px solid rgba(244,237,224,0.22)" }}
+                        />
+                      ) : (
+                        <ThemeIcon
+                          size={60}
+                          radius="xl"
+                          style={{
+                            background: "rgba(3, 25, 45, 0.85)",
+                            border: "1px solid rgba(244,237,224,0.18)",
+                          }}
+                        >
+                          <IconBroadcast size={26} />
+                        </ThemeIcon>
+                      )}
+                      <div className="min-w-0 space-y-2">
+                        <Text fw={600} size="lg" c={BRAND.beige} lineClamp={1}>
+                          {heroPreviewStation.name}
+                        </Text>
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-200/70">
+                          <CountryFlag
+                            iso={heroPreviewCountryMeta?.iso_3166_1}
+                            title={`${heroPreviewStation.country} flag`}
+                            size={28}
+                          />
+                          <span>{heroPreviewStation.country}</span>
+                          {heroPreviewStation.language && (
+                            <>
+                              <span aria-hidden="true">•</span>
+                              <span>{heroPreviewStation.language}</span>
+                            </>
+                          )}
+                        </div>
+                        {heroPreviewStation.tags && (
+                          <Text size="xs" c="rgba(244,237,224,0.7)" lineClamp={2}>
+                            {heroPreviewStation.tags}
+                          </Text>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-5 flex items-end gap-[3px]">
+                      {Array.from({ length: 14 }).map((_, index) => (
+                        <motion.span
+                          key={index}
+                          className="equalizer-bar"
+                          style={{ width: 4 }}
+                          animate={{
+                            height: [10, 28, 12],
+                            opacity: [0.24, 0.6, 0.24],
+                          }}
+                          transition={{
+                            duration: 1.6 + index * 0.05,
+                            repeat: Infinity,
+                            ease: [0.42, 0, 0.58, 1],
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="hero-search-card space-y-4">
+                    <Text size="sm" c="rgba(244,237,224,0.72)" fw={500}>
+                      Search across the atlas
+                    </Text>
+                    <Form method="get" onChange={(event) => submit(event.currentTarget)}>
+                      <Input
+                        name="q"
+                        placeholder="Search countries"
+                        size="md"
+                        radius="xl"
+                        defaultValue={searchQueryRaw}
+                        leftSection={<IconSearch size={18} stroke={1.6} />}
+                        styles={{
+                          input: {
+                            background: "rgba(3, 24, 45, 0.65)",
+                            borderColor: "rgba(92, 158, 173, 0.35)",
+                            color: "#f4ede0",
+                            fontWeight: 500,
+                            "&:focus": {
+                              borderColor: "rgba(92, 158, 173, 0.65)",
+                              boxShadow: "0 0 0 3px rgba(92, 158, 173, 0.2)",
+                            },
+                            "&::placeholder": {
+                              color: "rgba(244, 237, 224, 0.55)",
+                            },
                           },
-                          "&::placeholder": {
-                            color: "rgba(148, 163, 184, 0.7)",
-                          },
-                        },
-                      }}
-                    />
-                  </Form>
-                  <Button
-                    component="a"
-                    href="#explore"
-                    radius="xl"
-                    rightSection={<IconCompass size={16} />}
-                    style={{
-                      background: "linear-gradient(120deg, rgba(199,158,73,0.9) 0%, rgba(148,113,51,0.9) 100%)",
-                      color: "#0f172a",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Browse featured regions
-                  </Button>
+                        }}
+                      />
+                    </Form>
+                  </div>
                 </div>
               </div>
             </motion.section>
 
-            <section className="mt-12 space-y-6">
+            <section id="atlas" className="mt-12 space-y-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <Title order={2} style={{ fontSize: "1.75rem", fontWeight: 600 }}>
+                  <Title
+                    order={2}
+                    style={{ fontSize: "1.85rem", fontWeight: 600, color: BRAND.beige }}
+                  >
                     Chart your path by continent
                   </Title>
-                  <Text size="sm" c="rgba(226,232,240,0.65)">
+                  <Text size="sm" c="rgba(244,237,224,0.7)">
                     Filter the atlas to the regions that match your listening mood.
                   </Text>
                 </div>
-                <Text size="sm" c="rgba(226,232,240,0.5)">
+                <Text size="sm" c="rgba(244,237,224,0.55)">
                   Showing {filteredCountries.length.toLocaleString()} of {topCountries.length.toLocaleString()} spotlight countries
                 </Text>
               </div>
 
-              <div className="scroll-track overflow-x-auto pb-2">
+              <div id="atlas-filters" className="scroll-track overflow-x-auto pb-2">
                 <div className="flex min-w-max items-center gap-3">
                   <button
                     type="button"
@@ -737,7 +1226,7 @@ export default function Index() {
             <section className="mt-10 space-y-10">
               {displaySections.length === 0 ? (
                 <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur">
-                  <Text size="md" c="rgba(226,232,240,0.6)">
+                  <Text size="md" c="rgba(244,237,224,0.65)">
                     No countries match that search. Try another name or reset the filters.
                   </Text>
                 </div>
@@ -866,7 +1355,7 @@ export default function Index() {
                     variant="subtle"
                     radius="xl"
                     leftSection={<IconArrowLeft size={18} />}
-                    onClick={() => navigate("/", { preventScrollReset: true })}
+                    onClick={handleBackToWorldView}
                     style={{
                       color: "#fefae0",
                     }}

@@ -1,0 +1,13 @@
+{
+  "github.copilot.chat.mcp": {
+    "mcpServers": {
+      "nanobanana": {
+        "command": "uvx",
+        "args": ["nanobanana-mcp-server@latest"],
+        "env": {
+          "GEMINI_API_KEY": "AIzaSyBQ4WXKA50J5Dqp75i7HdUFWJaw2oGX92w"
+        }
+      }
+    }
+  }
+}
