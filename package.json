@@ -4,10 +4,10 @@
     "sideEffects": false,
     "type": "module",
     "scripts": {
-        "build": "remix build",
-        "dev": "remix dev --manual",
+        "build": "remix vite:build",
+        "dev": "remix vite:dev",
         "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
-        "start": "remix-serve ./build/index.js",
+        "start": "remix-serve ./build/server/index.js",
         "typecheck": "tsc"
     },
     "dependencies": {
@@ -15,10 +15,11 @@
         "@mantine/carousel": "^8.3.5",
         "@mantine/core": "^8.3.5",
         "@mantine/hooks": "^8.3.5",
-        "@remix-run/node": "^2.0.0",
-        "@remix-run/react": "^2.0.0",
-        "@remix-run/serve": "^2.0.0",
+        "@remix-run/node": "^2.16.7",
+        "@remix-run/react": "^2.16.7",
+        "@remix-run/serve": "^2.16.7",
         "@tabler/icons-react": "^2.47.0",
+        "@vercel/remix": "^2.16.7",
         "framer-motion": "^12.23.24",
         "isbot": "^3.6.8",
         "react": "^18.2.0",
@@ -27,8 +28,7 @@
         "react-swipeable": "^7.0.2"
     },
     "devDependencies": {
-        "@remix-run/dev": "^2.0.0",
-        "@remix-run/vercel": "^1.19.3",
+        "@remix-run/dev": "^2.16.7",
         "@types/react": "^18.2.20",
         "@types/react-dom": "^18.2.7",
         "autoprefixer": "^10.4.19",

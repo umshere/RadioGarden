@@ -1,12 +1,5 @@
 import type { LinksFunction } from "@remix-run/node";
-import {
-  Links,
-  LiveReload,
-  Meta,
-  Outlet,
-  Scripts,
-  ScrollRestoration,
-} from "@remix-run/react";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
 import { MantineProvider, createTheme } from "@mantine/core";
 import stylesheet from "./tailwind.css?url";
 
@@ -85,7 +78,6 @@ export default function App() {
         </MantineProvider>
         <ScrollRestoration />
         <Scripts />
-        <LiveReload />
       </body>
     </html>
   );
