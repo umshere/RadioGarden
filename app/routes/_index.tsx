@@ -328,14 +328,11 @@ export default function Index() {
     }
 
     let cancelled = false;
-  const randomCountry = topCountries[Math.floor(Math.random() * topCountries.length)];
-  if (!randomCountry) return;
-  const randomContinent = getContinent(randomCountry.iso_3166_1);
 
     const loadStation = async () => {
       try {
         const response = await fetch(
-          `${RB}/json/stations/bycountry/${encodeURIComponent(randomCountry.name)}?limit=1&hidebroken=true&order=clickcount&reverse=true`
+          `${RB}/json/stations/byname/ISHQ FM 104.8?limit=1&hidebroken=true`
         );
 
         if (!response.ok) return;
@@ -346,14 +343,15 @@ export default function Index() {
         const [station] = (await response.json()) as Station[];
         if (!station || cancelled) return;
 
+        const stationCountry = countryMap.get(station.country);
+        const continent = stationCountry ? getContinent(stationCountry.iso_3166_1) : "Asia";
+
         autoPlayRef.current = false;
         setCurrentStationIndex(0);
-        setSelectedContinent((prev) => prev ?? randomContinent);
+        setSelectedContinent((prev) => prev ?? continent);
+        setActiveContinent(continent);
         setHasDismissedPlayer(false);
-        setNowPlaying({
-          ...station,
-          country: station.country || randomCountry.name,
-        });
+        setNowPlaying(station);
       } catch (error) {
         console.error("Failed to seed station", error);
       }
