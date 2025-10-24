@@ -622,25 +622,11 @@ export default function Index() {
   }, [navigate]);
 
   useEffect(() => {
-    let timeoutId: number | undefined;
     if (isRouteTransitioning) {
-      timeoutId = window.setTimeout(() => setShowNavigationIndicator(true), 160);
-      return () => {
-        if (timeoutId) {
-          window.clearTimeout(timeoutId);
-        }
-      };
+      setShowNavigationIndicator(true);
+    } else {
+      setShowNavigationIndicator(false);
     }
-
-    if (!isRouteTransitioning) {
-      timeoutId = window.setTimeout(() => setShowNavigationIndicator(false), 120);
-    }
-
-    return () => {
-      if (timeoutId) {
-        window.clearTimeout(timeoutId);
-      }
-    };
   }, [isRouteTransitioning]);
 
   useEffect(() => {
@@ -690,7 +676,7 @@ export default function Index() {
     if (nowPlaying && stationRefs.current[nowPlaying.uuid]) {
       stationRefs.current[nowPlaying.uuid]?.scrollIntoView({
         behavior: "smooth",
-        block: "center",
+        block: "nearest",
       });
     }
   }, [nowPlaying, selectedCountry]);
@@ -879,7 +865,7 @@ export default function Index() {
       </header>
 
       <main
-        className="relative z-10 mx-auto max-w-6xl px-4 pb-32 pt-12 md:px-8"
+        className="relative z-10 mx-auto max-w-6xl px-4 pb-96 pt-12 md:px-8"
         {...swipeHandlers}
       >
         {isCountryViewPending ? (
@@ -1692,14 +1678,6 @@ export default function Index() {
                             value={selectedContinent}
                             onChange={(value) => {
                               setSelectedContinent(value);
-                              if (value && continentData[value] && continentData[value].length > 0) {
-                                const firstCountry = continentData[value][0];
-                                if (firstCountry) {
-                                  navigate(`/?country=${encodeURIComponent(firstCountry.name)}`, {
-                                    preventScrollReset: true,
-                                  });
-                                }
-                              }
                             }}
                             data={continents.map((continent) => ({
                               value: continent,

@@ -1,0 +1,9 @@
+
+> start
+> remix-serve ./build/server/nodejs-eyJydW50aW1lIjoibm9kZWpzIn0/index.js
+
+[remix-serve] http://localhost:3000 (http://192.168.0.2:3000)
+GET /?country=United%20States 200 - - 1775.501 ms
+GET /__manifest?p=%2F&version=dc186140 200 - - 2.187 ms
+GET / 200 - - 547.751 ms
+GET /_root.data?country=Germany 200 - - 968.982 ms
