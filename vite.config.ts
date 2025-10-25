@@ -2,6 +2,7 @@ import { vitePlugin as remix } from "@remix-run/dev";
 import { installGlobals } from "@remix-run/node";
 import { defineConfig } from "vite";
 import { vercelPreset } from "@vercel/remix/vite";
+import path from "path";
 
 installGlobals();
 
@@ -19,6 +20,13 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      "~": path.resolve(__dirname, "app"),
+      "three/webgpu": "three",
+      "three/tsl": "three",
+    },
+  },
   ssr: {
     noExternal: ["@mantine/core", "@mantine/hooks"],
   },

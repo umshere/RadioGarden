@@ -1,0 +1,9 @@
+node_modules/
+build/
+public/
+postcss.config.js
+tailwind.config.ts
+vite.config.ts
+playwright.config.ts
+playwright-report/
+test-results/

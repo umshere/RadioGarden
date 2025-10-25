@@ -20,7 +20,7 @@
       "~/*": ["./app/*"]
     },
     "noUncheckedIndexedAccess": true,
-    "ignoreDeprecations": "6.0"
+    "ignoreDeprecations": "5.0"
   },
   "include": ["remix.env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]

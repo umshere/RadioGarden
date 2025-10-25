@@ -440,8 +440,338 @@
     );
   }
 
+  .station-card--favorite {
+    border-color: rgba(209, 73, 91, 0.45);
+    box-shadow: 0 22px 40px -18px rgba(209, 73, 91, 0.28);
+  }
+
+  .player-stack-shell {
+    border-radius: 1.5rem;
+    border: 1px solid rgba(244, 237, 224, 0.1);
+    background: linear-gradient(
+      145deg,
+      rgba(4, 26, 47, 0.92) 0%,
+      rgba(6, 36, 60, 0.92) 52%,
+      rgba(8, 44, 72, 0.9) 100%
+    );
+    box-shadow: 0 32px 65px -26px rgba(1, 10, 22, 0.65);
+    padding: 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .player-card-stack {
+    position: relative;
+    min-height: 20rem;
+    border-radius: 1.5rem;
+  }
+
+  .player-card-layer {
+    position: relative;
+    border-radius: 1.5rem;
+    overflow: hidden;
+  }
+
+  .mission-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: 100%;
+    padding: 2rem;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(244, 237, 224, 0.12);
+    background: linear-gradient(
+      135deg,
+      rgba(6, 30, 54, 0.92) 0%,
+      rgba(10, 42, 72, 0.9) 100%
+    );
+    box-shadow: 0 28px 60px -28px rgba(1, 10, 22, 0.65);
+  }
+
+  .mission-card__toggles {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .mode-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 1.1rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(8, 26, 47, 0.6);
+    color: rgba(248, 250, 252, 0.78);
+    transition: background 0.2s ease, border 0.2s ease, transform 0.2s ease;
+  }
+
+  .mode-toggle-btn:hover {
+    background: rgba(12, 40, 68, 0.75);
+    border-color: rgba(148, 163, 184, 0.55);
+  }
+
+  .mode-toggle-btn--active {
+    background: linear-gradient(
+      120deg,
+      rgba(92, 158, 173, 0.95) 0%,
+      rgba(1, 58, 99, 0.95) 100%
+    );
+    border-color: rgba(254, 250, 226, 0.55);
+    color: #0f172a;
+    box-shadow: 0 18px 40px -24px rgba(4, 26, 47, 0.65);
+  }
+
+  .mode-toggle-btn__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    background: rgba(3, 24, 44, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    font-size: 1.3rem;
+  }
+
+  .mode-toggle-btn__content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+  }
+
+  .mode-toggle-btn__title {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .mode-toggle-btn__caption {
+    font-size: 0.75rem;
+    color: rgba(226, 232, 240, 0.65);
+  }
+
+  .player-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 1.5rem;
+    padding: 2rem;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(244, 237, 224, 0.12);
+    background: linear-gradient(
+      160deg,
+      rgba(5, 24, 45, 0.92) 0%,
+      rgba(7, 34, 60, 0.92) 55%,
+      rgba(9, 44, 74, 0.9) 100%
+    );
+    box-shadow: 0 30px 60px -28px rgba(2, 12, 26, 0.65);
+  }
+
+  .player-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2rem;
+  }
+
+  .player-card__avatar {
+    flex-shrink: 0;
+  }
+
+  .player-card__title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .player-card__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .player-card__meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    color: rgba(226, 232, 240, 0.75);
+    font-size: 0.85rem;
+  }
+
+  .player-card__tags {
+    color: rgba(226, 232, 240, 0.72);
+    line-height: 1.5;
+  }
+
+  .player-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .player-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .player-card-controls {
+    margin-top: 2.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .player-card-dots {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .player-card-dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 9999px;
+    background: rgba(148, 163, 184, 0.35);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .player-card-dot--active {
+    background: rgba(199, 158, 73, 0.85);
+    border-color: rgba(254, 250, 226, 0.6);
+    transform: scale(1.15);
+  }
+
+  .quick-retune-container {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+    z-index: 60;
+  }
+
+  .quick-retune-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(148, 163, 184, 0.32);
+    background: rgba(8, 22, 39, 0.7);
+    color: rgba(248, 250, 252, 0.85);
+    padding: 0.55rem 1.1rem;
+    box-shadow: 0 18px 32px -24px rgba(2, 15, 32, 0.8);
+  }
+
+  .quick-retune-trigger--active {
+    background: linear-gradient(
+      120deg,
+      rgba(199, 158, 73, 0.92) 0%,
+      rgba(148, 113, 51, 0.92) 100%
+    );
+    border-color: rgba(254, 250, 226, 0.55);
+    color: #0f172a;
+  }
+
+  .quick-retune-panel {
+    width: min(20rem, 90vw);
+    padding: 1.4rem;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(244, 237, 224, 0.12);
+    background: rgba(8, 24, 44, 0.9);
+    box-shadow: 0 28px 52px -24px rgba(2, 12, 28, 0.75);
+    backdrop-filter: blur(18px);
+  }
+
+  .quick-retune-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .quick-retune-panel__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .quick-retune-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(4, 20, 37, 0.75);
+    color: rgba(248, 250, 252, 0.75);
+    font-size: 0.75rem;
+  }
+
+  .quick-retune-chip--active {
+    background: linear-gradient(
+      120deg,
+      rgba(92, 158, 173, 0.92) 0%,
+      rgba(1, 58, 99, 0.92) 100%
+    );
+    border-color: rgba(254, 250, 226, 0.55);
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .quick-retune-panel__countries {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .quick-retune-country {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(4, 18, 34, 0.75);
+    color: rgba(248, 250, 252, 0.88);
+    font-size: 0.85rem;
+    transition: background 0.2s ease, border 0.2s ease, transform 0.2s ease;
+  }
+
+  .quick-retune-country:hover {
+    background: rgba(8, 30, 54, 0.85);
+    border-color: rgba(199, 158, 73, 0.38);
+    transform: translateY(-1px);
+  }
+
+  .quick-retune-country__info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .quick-retune-country__meta {
+    font-size: 0.7rem;
+    color: rgba(226, 232, 240, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
   .divider-soft {
-    @apply h-px w-full;
+    height: 1px;
+    width: 100%;
     background: linear-gradient(
       90deg,
       rgba(244, 237, 224, 0),
@@ -458,7 +788,8 @@
   }
 
   .equalizer-bar {
-    @apply w-1 rounded-full;
+    width: 0.25rem;
+    border-radius: 9999px;
     background: linear-gradient(
       0deg,
       rgba(209, 73, 91, 0.85) 0%,
@@ -477,5 +808,26 @@
 
   .scroll-track::-webkit-scrollbar-thumb:hover {
     background: rgba(209, 73, 91, 0.55);
+  }
+
+  /* Skeleton loading animations */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(148, 163, 184, 0.1) 0%,
+      rgba(148, 163, 184, 0.18) 50%,
+      rgba(148, 163, 184, 0.1) 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 }
