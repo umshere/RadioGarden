@@ -4,6 +4,8 @@
 
 Radio Passport is a beautiful, web-based radio player that lets you explore and discover radio stations from around the globe. With a curated, passport-stamp-style interface, you can travel the world through sound without leaving your browser.
 
+> Documentation: See the docs index at [docs/README.md](./docs/README.md) for guides, plans, and testing.
+
 ![Radio Passport Interface](https://via.placeholder.com/800x400/1a1a1a/ffd700?text=Radio+Passport+Interface)
 
 ## ✨ Features
@@ -63,10 +65,103 @@ Built with modern web technologies:
 - **UI Components**: [Mantine](https://mantine.dev/) - React component library
 - **Animations**: [Framer Motion](https://www.framer.com/motion/) - Production-ready animations
 - **Data Source**: [Radio Browser API](https://www.radio-browser.info/) - Free, community-maintained radio directory
+- **TypeScript**: Full type safety across the application
+- **Component Architecture**: Modular, reusable component design
+
+### 🏗️ Project Structure
+
+The application follows a clean, modular architecture:
+
+```
+app/
+├── components/          # Shared UI components
+│   ├── CountryFlag.tsx
+│   └── PassportStampIcon.tsx
+├── constants/          # App constants and configuration
+│   └── brand.ts
+├── routes/             # Route components
+│   ├── components/     # Route-specific components
+│   │   ├── HeroSection.tsx
+│   │   ├── AtlasFilters.tsx
+│   │   ├── AtlasGrid.tsx
+│   │   ├── CountryOverview.tsx
+│   │   ├── PlayerCardStack.tsx
+│   │   ├── PassportPlayerFooter.tsx
+│   │   ├── QuickRetuneWidget.tsx
+│   │   ├── StationCard.tsx
+│   │   ├── StationGrid.tsx
+│   │   └── LoadingView.tsx
+│   └── _index.tsx      # Main route (980 lines, down from 2593)
+├── types/              # TypeScript type definitions
+│   └── radio.ts
+└── utils/              # Utility functions
+    └── geography.ts
+```
+
+## 🎯 Implementation Status (Updated Oct 24, 2025)
+
+### ✅ Completed Features
+
+**Radio Browser API Connection Fix**
+
+- Resilient `rbFetchJson` utility with automatic mirror fallback
+- Tries multiple servers (de2, fi1, de1, fr1, nl1, gb1, us1)
+- Caches working server for performance
+- All API calls updated
+
+**Player ↔ Atlas Synchronisation**
+
+- Play controls update continent/country context
+- Debounced scrolling (200ms)
+- Smooth transitions with `preventScrollReset`
+
+**Shuffle Mode & Scrolling**
+
+- Fixed page jump bugs
+- Smooth centering with guards
+- Proper null checks
+
+**Quick Retune Improvements**
+
+- No page jumping during selections
+- Smooth scroll to station grid
+- Consistent navigation behavior
+
+**Listening Mode Toggle**
+
+- Header placement for visibility
+- World/Local mode switching
+- Visual feedback animations
+
+**Skeleton UI & Loading States**
+
+- Shimmer animations
+- Request-state driven
+- Prevents layout shifts
+
+**User Journey Revamp**
+
+- Streamlined from 6 to 4 buttons
+- Hero: "Start Your Journey" + "Quick Retune"
+- Mission Card: "Explore World" + "Explore [Country]"
+- Clear, contextual flow
+
+### 📋 Next Steps
+
+**E2E Tests:** Skeleton states, mode toggle, scroll behavior, cross-browser  
+**UX Polish:** Tooltips, ARIA labels, copy refinement
 
 ## 🌟 Key Statistics
 
 - **80** Countries Featured
+- **50,520** Stations Tracked
+- **7** Continents Covered
+- **24/7** Live Streaming
+
+- **80** Countries Featured
+- **50,520** Stations Tracked
+- **7** Continents Covered
+- **24/7** Live Streaming
 - **50,520** Stations Tracked
 - **7** Continents Covered
 - **24/7** Live Streaming
@@ -91,11 +186,14 @@ npm run dev
 
 ### Areas for Contribution
 
-- New UI themes and designs
-- Additional station sources
-- Mobile app development
-- Performance optimizations
-- Localization support
+New UI themes and designs
+Additional station sources
+Mobile app development
+Performance optimizations
+Localization support
+Unit tests for components
+End-to-end testing improvements
+Accessibility enhancements
 
 ## 📄 License
 
