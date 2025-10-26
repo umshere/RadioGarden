@@ -70,7 +70,7 @@ Built with modern web technologies:
 
 ### 🏗️ Project Structure
 
-The application follows a clean, modular architecture:
+The application follows a clean, modular architecture with **DRY principles** applied throughout:
 
 ```
 app/
@@ -79,6 +79,18 @@ app/
 │   └── PassportStampIcon.tsx
 ├── constants/          # App constants and configuration
 │   └── brand.ts
+├── hooks/              # Custom React hooks (state management)
+│   ├── useRadioPlayer.ts        # Audio playback & controls
+│   ├── useListeningMode.ts      # World/Local mode toggle
+│   ├── useFavorites.ts          # Favorite stations management
+│   ├── useRecentStations.ts     # Recently played tracking
+│   ├── useHoverAudio.ts         # Preview sound effects
+│   ├── useAtlasState.ts         # Country/continent filtering
+│   ├── usePlayerCards.ts        # Card stack logic
+│   ├── useStationNavigation.ts  # Next/previous controls
+│   ├── useAtlasNavigation.ts    # Atlas continent selection
+│   ├── useDerivedData.ts        # Computed/memoized data
+│   └── useEventHandlers.ts      # Consolidated event handlers
 ├── routes/             # Route components
 │   ├── components/     # Route-specific components
 │   │   ├── HeroSection.tsx
@@ -90,13 +102,25 @@ app/
 │   │   ├── QuickRetuneWidget.tsx
 │   │   ├── StationCard.tsx
 │   │   ├── StationGrid.tsx
+│   │   ├── CollapsibleSection.tsx
 │   │   └── LoadingView.tsx
-│   └── _index.tsx      # Main route (980 lines, down from 2593)
+│   └── _index.tsx      # Main route (393 lines, down from 1200+)
 ├── types/              # TypeScript type definitions
 │   └── radio.ts
 └── utils/              # Utility functions
-    └── geography.ts
+    ├── geography.ts       # Continent/country mapping
+    ├── haptics.ts         # Vibration feedback
+    ├── radioBrowser.ts    # API client with fallback
+    └── scrollHelpers.ts   # Scroll utilities
 ```
+
+**Code Quality Improvements (Oct 2025):**
+
+- ✅ **67% reduction** in main route file (1200+ → 393 lines)
+- ✅ **11 custom hooks** extract all state management logic
+- ✅ **Separated concerns**: UI, state, effects, handlers, derived data
+- ✅ **DRY principles** eliminate code duplication
+- ✅ **Clean architecture** with clear separation of responsibilities
 
 ## 🎯 Implementation Status (Updated Oct 24, 2025)
 

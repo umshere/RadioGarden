@@ -58,11 +58,11 @@ export function PassportPlayerFooter({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 160, opacity: 0 }}
         transition={{ type: "spring", damping: 26, stiffness: 180 }}
-        className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-3 md:px-4 md:pb-4"
+        className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 md:px-4 md:pb-4"
       >
         <div className="mx-auto w-full max-w-5xl">
-          <div className="glass-veil relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-4 shadow-2xl md:p-6">
-            <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto,minmax(0,1fr),auto] md:items-center md:gap-8">
+          <div className="glass-veil relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-3 shadow-2xl md:p-4">
+            <div className="flex flex-col gap-3 md:grid md:grid-cols-[auto,minmax(0,1fr),auto] md:items-center md:gap-6">
               <div className="flex min-w-0 items-center gap-3 md:gap-4">
                 <div className="relative">
                   <motion.span
@@ -79,16 +79,16 @@ export function PassportPlayerFooter({
                       nowPlaying.favicon ||
                       "https://placehold.co/120x120/0f172a/ffffff?text=📻"
                     }
-                    size={72}
-                    radius="xl"
-                    className="md:w-[86px] md:h-[86px]"
+                    size={56}
+                    radius="lg"
+                    className="md:w-[64px] md:h-[64px]"
                     style={{
                       border: "2px solid rgba(199,158,73,0.6)",
                       boxShadow: "0 14px 35px rgba(5,11,25,0.6)",
                     }}
                   />
                 </div>
-                <div className="min-w-0 space-y-3">
+                <div className="min-w-0 space-y-2">
                   <Badge
                     radius="xl"
                     size="xs"
@@ -101,7 +101,7 @@ export function PassportPlayerFooter({
                   >
                     Now playing
                   </Badge>
-                  <Text fw={600} size="lg" c="#f8fafc" lineClamp={1}>
+                  <Text fw={600} size="md" c="#f8fafc" lineClamp={1}>
                     {nowPlaying.name}
                   </Text>
                   <div className="flex flex-wrap items-center gap-2 text-sm text-slate-200/80">
@@ -117,7 +117,7 @@ export function PassportPlayerFooter({
                 </div>
               </div>
 
-              <div className="flex w-full flex-col items-center gap-3 md:self-end">
+              <div className="flex w-full flex-col items-center gap-2 md:self-end">
                 <div className="player-mode-chip">
                   <span className="player-mode-chip__label">Listening mode</span>
                   <span className="player-mode-chip__value">
@@ -271,7 +271,7 @@ export function PassportPlayerFooter({
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-6 flex h-12 items-end justify-center gap-[3px]"
+              className="mt-3 flex h-8 items-end justify-center gap-[2px]"
             >
               {Array.from({ length: 40 }).map((_, index) => {
                 const idleHeight = 18 + Math.random() * 8;

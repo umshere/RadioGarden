@@ -14,9 +14,9 @@ export function CollapsibleSection({ title, defaultOpen = true, children, id }: 
   const [open, setOpen] = useState<boolean>(defaultOpen);
 
   return (
-    <section id={id} className="mt-6">
+    <section id={id} className="mt-4">
       <div
-        className="flex items-center justify-between rounded-2xl border px-4 py-3"
+        className="flex items-center justify-between rounded-xl border px-3 py-2"
         style={{
           borderColor: "rgba(244,237,224,0.12)",
           background: "rgba(4,22,39,0.6)",
@@ -52,7 +52,7 @@ export function CollapsibleSection({ title, defaultOpen = true, children, id }: 
             transition={{ duration: 0.22, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="mt-4">{children}</div>
+            <div className="mt-3">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>

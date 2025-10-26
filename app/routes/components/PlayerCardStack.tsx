@@ -118,7 +118,7 @@ export function PlayerCardStack({
   return (
     <section id="player" className="mt-8">
       <div className="player-stack-shell">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-b from-[#0a1426] via-[#0a1426] to-[#0a1426]/95 pb-4 backdrop-blur-sm">
           <div className="min-w-0 flex-1">
             <Title order={2} style={{ fontSize: "1.6rem", fontWeight: 600 }}>
               Radio passport player

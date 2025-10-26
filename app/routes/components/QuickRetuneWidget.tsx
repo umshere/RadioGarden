@@ -80,7 +80,7 @@ export function QuickRetuneWidget({
               transition={{ duration: 0.22, ease: "easeOut" }}
               className="quick-retune-panel"
               id="quick-retune-panel"
-              style={{ position: "fixed", right: 16, bottom: 84, zIndex: 50 }}
+              style={{ position: "fixed", right: 16, bottom: 84, zIndex: 45 }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") onOpenChange(false);
               }}

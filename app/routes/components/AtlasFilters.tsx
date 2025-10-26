@@ -29,8 +29,8 @@ export function AtlasFilters({
   onContinentSelect,
 }: AtlasFiltersProps) {
   return (
-    <div id="atlas-filters" className="scroll-track overflow-x-auto pb-2">
-      <div className="flex min-w-max items-center gap-3">
+    <div id="atlas-filters" className="scroll-track overflow-x-auto pb-1">
+      <div className="flex min-w-max items-center gap-2">
         <button
           type="button"
           className={`filter-chip ${activeContinent === null ? "filter-chip--active" : ""}`}
