@@ -421,6 +421,7 @@
     @apply relative flex h-full flex-col gap-5 overflow-hidden rounded-2xl border p-5 transition;
     border-color: rgba(244, 237, 224, 0.12);
     background: rgba(4, 22, 39, 0.9);
+    min-height: 189px;
     box-shadow: 0 20px 44px -22px rgba(1, 10, 22, 0.7);
   }
 

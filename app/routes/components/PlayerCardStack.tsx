@@ -181,6 +181,7 @@ export function PlayerCardStack({
                   </Text>
                     <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 mt-4">
                     <Button
+                      data-testid="mission-explore-world"
                       radius="xl"
                       size="md"
                       onClick={() => onMissionExploreWorld()}
@@ -196,6 +197,7 @@ export function PlayerCardStack({
                       Explore the World
                     </Button>
                     <Button
+                      data-testid="mission-stay-local"
                       radius="xl"
                       size="md"
                       variant="outline"

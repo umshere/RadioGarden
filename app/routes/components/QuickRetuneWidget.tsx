@@ -33,7 +33,7 @@ export function QuickRetuneWidget({
 
   return (
     <div className="quick-retune-container">
-      <Tooltip label={isOpen ? "Close quick retune" : "Open quick retune panel"} position="top" withArrow>
+      <Tooltip label={isOpen ? "Close country picker" : "Open country picker"} position="top" withArrow>
         <motion.button
           type="button"
           className={`quick-retune-trigger ${isOpen ? "quick-retune-trigger--active" : ""}`}
@@ -42,8 +42,8 @@ export function QuickRetuneWidget({
           aria-haspopup="dialog"
           aria-controls="quick-retune-panel"
           aria-expanded={isOpen}
-          aria-label={isOpen ? "Close quick retune panel" : "Open quick retune panel"}
-          title={isOpen ? "Close quick retune" : "Open quick retune"}
+          aria-label={isOpen ? "Close country picker" : "Open country picker"}
+          title={isOpen ? "Close country picker" : "Open country picker"}
           style={{ visibility: isOpen ? "hidden" : "visible" }}
         >
           <IconMapPin size={18} />
@@ -96,7 +96,7 @@ export function QuickRetuneWidget({
                 variant="subtle"
                 onClick={() => onOpenChange(false)}
                 style={{ color: "rgba(226,232,240,0.7)" }}
-                aria-label="Close quick retune"
+                aria-label="Close country picker"
               >
                 <IconX size={14} />
               </ActionIcon>

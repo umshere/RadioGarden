@@ -277,8 +277,8 @@ export function HeroSection({
                 type="button"
                 className="cta-secondary"
                 onClick={onQuickRetune}
-                aria-label="Open quick retune"
-                title="Quick retune"
+                aria-label="Browse world atlas"
+                title="Browse world atlas"
               >
                 <IconCompass size={18} />
                 Quick Retune
