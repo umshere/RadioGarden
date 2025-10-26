@@ -11,8 +11,7 @@ export function useStationNavigation(
   countryMap: Map<string, { iso_3166_1: string }>,
   setSelectedContinent: (continent: string | null) => void,
   setActiveContinent: (continent: string | null) => void,
-  selectedCountry: string | null,
-  stationRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>
+  selectedCountry: string | null
 ) {
   const playNext = useCallback(() => {
     if (activeStations.length === 0) return;
@@ -33,15 +32,6 @@ export function useStationNavigation(
       }
 
       startStation(nextStation, { autoPlay: true });
-
-      if (selectedCountry && stationRefs.current[nextStation.uuid]) {
-        setTimeout(() => {
-          stationRefs.current[nextStation.uuid]?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-        }, 200);
-      }
     }
   }, [
     currentStationIndex,
@@ -53,7 +43,6 @@ export function useStationNavigation(
     setCurrentStationIndex,
     setSelectedContinent,
     setActiveContinent,
-    stationRefs,
   ]);
 
   const playPrevious = useCallback(() => {
@@ -76,15 +65,6 @@ export function useStationNavigation(
       }
 
       startStation(previousStation, { autoPlay: true });
-
-      if (selectedCountry && stationRefs.current[previousStation.uuid]) {
-        setTimeout(() => {
-          stationRefs.current[previousStation.uuid]?.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-        }, 200);
-      }
     }
   }, [
     currentStationIndex,
@@ -96,7 +76,6 @@ export function useStationNavigation(
     setCurrentStationIndex,
     setSelectedContinent,
     setActiveContinent,
-    stationRefs,
   ]);
 
   return {

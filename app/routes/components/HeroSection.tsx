@@ -1,15 +1,14 @@
-import { useState, useEffect, useMemo, type CSSProperties } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Form, useSubmit } from "@remix-run/react";
-import { Text, Input, Title, Button, Badge, Tooltip } from "@mantine/core";
-import { IconSearch, IconHeadphones, IconCompass } from "@tabler/icons-react";
+import { Text, Tooltip } from "@mantine/core";
+import { IconSearch, IconHeadphones, IconCompass, IconMusic } from "@tabler/icons-react";
 import PassportStampIcon from "~/components/PassportStampIcon";
 import { CountryFlag } from "~/components/CountryFlag";
 import { BRAND } from "~/constants/brand";
 import type { Country, Station } from "~/types/radio";
 
 const HERO_TAGLINES = [
-  "Every country, one click away—your global radio passport.",
+  "Every country, one click away your global radio passport.",
   "Stamp your way through the world's soundscapes.",
   "Where every station is a new destination.",
 ] as const;
@@ -60,35 +59,35 @@ export function HeroSection({
   onMissionStayLocal,
   onHoverSound,
 }: HeroSectionProps) {
-  const submit = useSubmit();
   const [heroHovered, setHeroHovered] = useState(false);
   const [heroTaglineIndex, setHeroTaglineIndex] = useState(0);
   const [heroTickerIndex, setHeroTickerIndex] = useState(0);
 
+  // Floating music notes animation data - random but stable
+  const floatingNotes = useMemo(
+    () =>
+      Array.from({ length: 12 }).map((_, i) => ({
+        id: i,
+        delay: Math.random() * 8,
+        duration: 15 + Math.random() * 10,
+        startX: Math.random() * 100,
+        endX: Math.random() * 100,
+        startY: 110,
+        midY: 50 + Math.random() * 20,
+        endY: -20 - Math.random() * 10,
+        rotation: Math.random() * 360,
+        scale1: 0.4 + Math.random() * 0.3,
+        scale2: 0.8 + Math.random() * 0.4,
+        opacity: 0.2 + Math.random() * 0.15,
+        note: ['🎵', '🎶', '🎼', '🎹', '🎺', '🎸', '🎻', '🎤'][Math.floor(Math.random() * 8)],
+        blur: Math.random() * 1.2,
+      })),
+    []
+  );
+
   const countryMap = useMemo(
     () => new Map(topCountries.map((country) => [country.name, country] as const)),
     [topCountries]
-  );
-
-  const floatingStamps = useMemo<Array<{ id: string; style: CSSProperties; delay: number }>>(
-    () => [
-      {
-        id: "stamp-top-left",
-        style: { top: "-3.5rem", left: "-3rem" },
-        delay: 0,
-      },
-      {
-        id: "stamp-bottom-right",
-        style: { bottom: "-3.25rem", right: "8%" },
-        delay: 2.6,
-      },
-      {
-        id: "stamp-mid-right",
-        style: { top: "32%", right: "-3.75rem" },
-        delay: 4.2,
-      },
-    ],
-    []
   );
 
   const heroTickerItems = useMemo(() => {
@@ -169,8 +168,46 @@ export function HeroSection({
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundBlendMode: 'normal',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      {/* Floating Music Notes Animation - Random & Stable */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {floatingNotes.map((note) => (
+          <motion.div
+            key={note.id}
+            className="absolute text-2xl"
+            initial={{ 
+              x: `${note.startX}vw`, 
+              y: `${note.startY}%`,
+              rotate: note.rotation,
+              scale: note.scale1,
+              opacity: 0,
+            }}
+            animate={{
+              y: [`${note.startY}%`, `${note.midY}%`, `${note.endY}%`],
+              x: [`${note.startX}vw`, `${(note.startX + note.endX) / 2}vw`, `${note.endX}vw`],
+              rotate: [note.rotation, note.rotation + 180, note.rotation + 360],
+              scale: [note.scale1, note.scale2, note.scale1 * 0.8],
+              opacity: [0, note.opacity, note.opacity * 0.6, 0],
+            }}
+            transition={{
+              duration: note.duration,
+              delay: note.delay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            style={{
+              filter: `blur(${note.blur}px)`,
+              color: 'rgba(199,158,73,0.45)',
+            }}
+          >
+            {note.note}
+          </motion.div>
+        ))}
+      </div>
+
       <div className="relative z-10 flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
         <div className="max-w-2xl space-y-6">
           <motion.span

@@ -1,17 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Avatar, Text, Badge, ActionIcon, Button, Tooltip } from "@mantine/core";
-import {
-  IconDisc,
-  IconArrowLeft,
-  IconArrowsShuffle,
-  IconPlayerTrackPrev,
-  IconPlayerTrackNext,
-  IconPlayerPlayFilled,
-  IconPlayerPauseFilled,
-  IconX,
-  IconMapPin,
-} from "@tabler/icons-react";
-import { CountryFlag } from "~/components/CountryFlag";
+import { useFloatingMusicNotes } from "~/hooks/useFloatingMusicNotes";
+import { StationInfo } from "./player/StationInfo";
+import { PlaybackControls } from "./player/PlaybackControls";
+import { ModeBar } from "./player/ModeBar";
+import { Equalizer } from "./player/Equalizer";
 import type { Station, ListeningMode } from "~/types/radio";
 
 type PassportPlayerFooterProps = {
@@ -30,6 +22,7 @@ type PassportPlayerFooterProps = {
   onQuickRetune: () => void;
   onBackToWorld: () => void;
   onDismiss: () => void;
+  onMinimize: () => void;
 };
 
 export function PassportPlayerFooter({
@@ -48,8 +41,11 @@ export function PassportPlayerFooter({
   onQuickRetune,
   onBackToWorld,
   onDismiss,
+  onMinimize,
 }: PassportPlayerFooterProps) {
   if (!nowPlaying) return null;
+
+  const floatingNotes = useFloatingMusicNotes(8);
 
   return (
     <AnimatePresence>
@@ -61,251 +57,43 @@ export function PassportPlayerFooter({
         className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 md:px-4 md:pb-4"
       >
         <div className="mx-auto w-full max-w-5xl">
-          <div className="glass-veil relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-3 shadow-2xl md:p-4">
-            <div className="flex flex-col gap-3 md:grid md:grid-cols-[auto,minmax(0,1fr),auto] md:items-center md:gap-6">
-              <div className="flex min-w-0 items-center gap-3 md:gap-4">
-                <div className="relative">
-                  <motion.span
-                    className="absolute inset-0 -z-10 rounded-2xl"
-                    style={{
-                      background:
-                        "radial-gradient(circle at 50% 50%, rgba(199,158,73,0.3) 0%, transparent 70%)",
-                    }}
-                    animate={{ opacity: isPlaying ? [0.2, 0.5, 0.2] : 0.15 }}
-                    transition={{ duration: 3, repeat: Infinity }}
-                  />
-                  <Avatar
-                    src={
-                      nowPlaying.favicon ||
-                      "https://placehold.co/120x120/0f172a/ffffff?text=📻"
-                    }
-                    size={56}
-                    radius="lg"
-                    className="md:w-[64px] md:h-[64px]"
-                    style={{
-                      border: "2px solid rgba(199,158,73,0.6)",
-                      boxShadow: "0 14px 35px rgba(5,11,25,0.6)",
-                    }}
-                  />
-                </div>
-                <div className="min-w-0 space-y-2">
-                  <Badge
-                    radius="xl"
-                    size="xs"
-                    leftSection={<IconDisc size={12} />}
-                    style={{
-                      background: "rgba(199,158,73,0.2)",
-                      border: "1px solid rgba(199,158,73,0.45)",
-                      color: "#fefae0",
-                    }}
-                  >
-                    Now playing
-                  </Badge>
-                  <Text fw={600} size="md" c="#f8fafc" lineClamp={1}>
-                    {nowPlaying.name}
-                  </Text>
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-slate-200/80">
-                    <CountryFlag
-                      iso={countryMap.get(nowPlaying.country)?.iso_3166_1}
-                      title={`${nowPlaying.country} flag`}
-                      size={28}
-                    />
-                    <span>
-                      {nowPlaying.country} • {nowPlaying.language || "Unknown language"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex w-full flex-col items-center gap-2 md:self-end">
-                <div className="player-mode-chip">
-                  <span className="player-mode-chip__label">Listening mode</span>
-                  <span className="player-mode-chip__value">
-                    {listeningMode === "world" ? "Explore the World" : "Stay Local"}
-                  </span>
-                </div>
-                <Tooltip label="Change region or find a new station" position="top" withArrow>
-                  <Button
-                    radius="xl"
-                    size="xs"
-                    variant="light"
-                    leftSection={<IconMapPin size={16} />}
-                    onClick={onQuickRetune}
-                    style={{
-                      color: "#0f172a",
-                      background: "rgba(254,250,226,0.9)",
-                      border: "1px solid rgba(148,163,184,0.25)",
-                      fontWeight: 600,
-                    }}
-                    aria-label="Quick retune to another station"
-                  >
-                    Quick retune
-                  </Button>
-                </Tooltip>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end md:pr-2 md:gap-3">
-                                <Tooltip label="Exit and browse world" position="top" withArrow>
-                  <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}>
-                    <ActionIcon
-                      size="lg"
-                      variant="light"
-                      onClick={onBackToWorld}
-                      className="touch-manipulation min-w-[44px] min-h-[44px]"
-                      style={{
-                        background: "rgba(255,255,255,0.08)",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        color: "#94a3b8",
-                      }}
-                      aria-label="Back to world view"
-                    >
-                      <IconArrowLeft size={20} />
-                    </ActionIcon>
-                  </motion.div>
-                </Tooltip>
-                                <Tooltip label={shuffleMode ? "Shuffle on: Random stations" : "Shuffle off: Sequential play"} position="top" withArrow>
-                  <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}>
-                    <ActionIcon
-                      size="lg"
-                      variant="light"
-                      onClick={onShuffleToggle}
-                      className="touch-manipulation min-w-[44px] min-h-[44px]"
-                      style={{
-                        background: shuffleMode
-                          ? "rgba(199,158,73,0.25)"
-                          : "rgba(255,255,255,0.08)",
-                        border: shuffleMode
-                          ? "1px solid rgba(199,158,73,0.5)"
-                          : "1px solid rgba(255,255,255,0.15)",
-                        color: shuffleMode ? "#fefae0" : "#94a3b8",
-                      }}
-                      aria-label={shuffleMode ? "Shuffle mode on" : "Shuffle mode off"}
-                      aria-pressed={shuffleMode}
-                    >
-                      <IconArrowsShuffle size={20} />
-                    </ActionIcon>
-                  </motion.div>
-                </Tooltip>
-                {canSeekStations && (
-                  <Tooltip label="Previous station" position="top" withArrow>
-                    <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}>
-                      <ActionIcon
-                        size="lg"
-                        variant="light"
-                        onClick={onPlayPrevious}
-                        className="touch-manipulation min-w-[44px] min-h-[44px]"
-                        style={{
-                          background: "rgba(255,255,255,0.08)",
-                          border: "1px solid rgba(255,255,255,0.15)",
-                          color: "#94a3b8",
-                        }}
-                        aria-label="Previous"
-                      >
-                        <IconPlayerTrackPrev size={20} />
-                      </ActionIcon>
-                    </motion.div>
-                  </Tooltip>
-                )}
-                <Tooltip label={isPlaying ? "Pause" : "Play"} position="top" withArrow>
-                  <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}>
-                    <ActionIcon
-                      size="xl"
-                      variant="filled"
-                      onClick={onPlayPause}
-                      className="touch-manipulation min-w-[52px] min-h-[52px]"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, rgba(199,158,73,0.9), rgba(151,118,57,0.9))",
-                        border: "2px solid rgba(199,158,73,0.5)",
-                        color: "#0f1419",
-                        boxShadow: "0 4px 12px rgba(199,158,73,0.3)",
-                      }}
-                      aria-label={isPlaying ? "Pause station" : "Play station"}
-                      aria-pressed={isPlaying}
-                    >
-                      {isPlaying ? (
-                        <IconPlayerPauseFilled size={24} />
-                      ) : (
-                        <IconPlayerPlayFilled size={24} />
-                      )}
-                    </ActionIcon>
-                  </motion.div>
-                </Tooltip>
-                                {canSeekStations && (
-                  <Tooltip label="Next station" position="top" withArrow>
-                    <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}>
-                      <ActionIcon
-                        size="lg"
-                        variant="light"
-                        onClick={onPlayNext}
-                        className="touch-manipulation min-w-[44px] min-h-[44px]"
-                        style={{
-                          background: "rgba(255,255,255,0.08)",
-                          border: "1px solid rgba(255,255,255,0.15)",
-                          color: "#94a3b8",
-                        }}
-                        aria-label="Next"
-                      >
-                        <IconPlayerTrackNext size={20} />
-                      </ActionIcon>
-                    </motion.div>
-                  </Tooltip>
-                )}
-                                <Tooltip label="Stop and close player" position="top" withArrow>
-                  <motion.div whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }}>
-                    <ActionIcon
-                      size="lg"
-                      variant="subtle"
-                      onClick={onDismiss}
-                      className="touch-manipulation min-w-[44px] min-h-[44px]"
-                      style={{ color: "#64748b" }}
-                      aria-label="Close player"
-                    >
-                      <IconX size={20} />
-                    </ActionIcon>
-                  </motion.div>
-                </Tooltip>
+          <div className="glass-veil relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            {/* Main Content - Station Info + Controls */}
+            <div className="relative z-[1] bg-slate-900/40">
+              <div className="flex items-center justify-between gap-4 p-4">
+                <StationInfo 
+                  station={nowPlaying} 
+                  isPlaying={isPlaying} 
+                  countryMap={countryMap} 
+                />
+                
+                <PlaybackControls
+                  isPlaying={isPlaying}
+                  shuffleMode={shuffleMode}
+                  canSeekStations={canSeekStations}
+                  onPlayPause={onPlayPause}
+                  onPlayNext={onPlayNext}
+                  onPlayPrevious={onPlayPrevious}
+                  onShuffleToggle={onShuffleToggle}
+                  onMinimize={onMinimize}
+                  onDismiss={onDismiss}
+                />
               </div>
             </div>
+            
+            <ModeBar
+              listeningMode={listeningMode}
+              onQuickRetune={onQuickRetune}
+              onBackToWorld={onBackToWorld}
+            />
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-3 flex h-8 items-end justify-center gap-[2px]"
-            >
-              {Array.from({ length: 40 }).map((_, index) => {
-                const idleHeight = 18 + Math.random() * 8;
-                const idleHeights = [
-                  `${idleHeight}%`,
-                  `${idleHeight + 6}%`,
-                  `${idleHeight}%`,
-                ];
-                const activeHeights = [
-                  `${18 + Math.random() * 40}%`,
-                  `${30 + Math.random() * 50}%`,
-                  `${18 + Math.random() * 40}%`,
-                ];
-                return (
-                  <motion.span
-                    key={index}
-                    className="equalizer-bar"
-                    animate={{
-                      height: isPlaying ? activeHeights : idleHeights,
-                      opacity: isPlaying
-                        ? [0.4 + audioLevel * 0.4, 0.7, 0.4 + audioLevel * 0.4]
-                        : [0.18, 0.32, 0.18],
-                    }}
-                    transition={{
-                      duration: isPlaying
-                        ? 0.4 + Math.random() * 0.5
-                        : 1.4 + Math.random() * 0.6,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                );
-              })}
-            </motion.div>
+            {/* Compact Equalizer with Music Notes */}
+            <Equalizer 
+              isPlaying={isPlaying} 
+              audioLevel={audioLevel} 
+              barCount={50}
+              musicNotes={floatingNotes}
+            />
           </div>
         </div>
       </motion.footer>

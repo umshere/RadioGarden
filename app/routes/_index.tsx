@@ -2,8 +2,8 @@ import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useNavigate, useNavigation, useSearchParams, Form, useSubmit } from "@remix-run/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Badge, Text, Title, Input } from "@mantine/core";
-import { IconSearch } from "@tabler/icons-react";
+import { Badge, Text, Title, Input, Tooltip, ActionIcon } from "@mantine/core";
+import { IconSearch, IconMinimize } from "@tabler/icons-react";
 import { useSwipeable } from "react-swipeable";
 
 import PassportStampIcon from "~/components/PassportStampIcon";
@@ -25,6 +25,7 @@ import { PassportPlayerFooter } from "./components/PassportPlayerFooter";
 import { LoadingView } from "./components/LoadingView";
 import { ListeningModeToggle } from "./components/ListeningModeToggle";
 import { CollapsibleSection } from "./components/CollapsibleSection";
+import { MinimalPlayer } from "./components/MinimalPlayer";
 
 // Custom Hooks
 import { useRadioPlayer } from "~/hooks/useRadioPlayer";
@@ -93,6 +94,7 @@ export default function Index() {
   const [showQueue, setShowQueue] = useState(false);
   const [hasDismissedPlayer, setHasDismissedPlayer] = useState(false);
   const [showNavigationIndicator, setShowNavigationIndicator] = useState(false);
+  const [isMinimalPlayer, setIsMinimalPlayer] = useState(false);
   const stationRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Derived data
@@ -103,7 +105,7 @@ export default function Index() {
   
   const derived = useDerivedData(countries, topCountries, searchQuery, atlas.activeContinent);
   const isRouteTransitioning = navigation.state !== "idle";
-  const selectedCountryMeta = selectedCountry ? atlas.countryMap.get(selectedCountry) : null;
+  const selectedCountryMeta = selectedCountry ? atlas.countryMap.get(selectedCountry) || null : null;
 
   // Navigation helpers
   const atlasNavigation = useAtlasNavigation(
@@ -121,8 +123,7 @@ export default function Index() {
     atlas.countryMap,
     atlas.setSelectedContinent,
     atlas.setActiveContinent,
-    selectedCountry,
-    stationRefs
+    selectedCountry
   );
 
   // Core event handler
@@ -187,11 +188,6 @@ export default function Index() {
       setHasDismissedPlayer(true);
     }
   }, [selectedCountry, player]);
-
-  useEffect(() => {
-    if (!selectedCountry || !player.nowPlaying) return;
-    stationRefs.current[player.nowPlaying.uuid]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [player.nowPlaying, selectedCountry]);
 
   useEffect(() => {
     setShowNavigationIndicator(isRouteTransitioning);
@@ -273,7 +269,24 @@ export default function Index() {
               </Form>
             </div>
             
-            <ListeningModeToggle listeningMode={mode.listeningMode} onToggle={handlers.handleToggleListeningMode} size="sm" />
+                        <ListeningModeToggle
+              listeningMode={mode.listeningMode}
+              onToggle={handlers.handleToggleListeningMode}
+              size="sm"
+            />
+            {player.nowPlaying && (
+              <Tooltip label={isMinimalPlayer ? "Expand player" : "Minimize player"} position="bottom" withArrow>
+                <ActionIcon
+                  size="sm"
+                  variant="subtle"
+                  onClick={() => setIsMinimalPlayer(!isMinimalPlayer)}
+                  style={{ color: "#94a3b8" }}
+                  aria-label={isMinimalPlayer ? "Expand player" : "Minimize player"}
+                >
+                  <IconMinimize size={16} />
+                </ActionIcon>
+              </Tooltip>
+            )}
           </nav>
           
           <Badge radius="xl" size="md" className="hidden md:block" style={{
@@ -378,13 +391,44 @@ export default function Index() {
       </AnimatePresence>
 
       <div {...ariaHidden}>
-        <PassportPlayerFooter nowPlaying={player.nowPlaying} isPlaying={player.isPlaying} audioLevel={player.audioLevel}
-          shuffleMode={player.shuffleMode} listeningMode={mode.listeningMode} canSeekStations={cards.canSeekStations}
-          hasStationsToCycle={cards.hasStationsToCycle} countryMap={atlas.countryMap} onPlayPause={player.playPause}
-          onPlayNext={playNext} onPlayPrevious={playPrevious} onShuffleToggle={() => player.setShuffleMode((prev) => !prev)}
-          onQuickRetune={() => setIsQuickRetuneOpen(true)} onBackToWorld={handlers.handleBackToWorldView}
-          onDismiss={() => { player.stop(); setHasDismissedPlayer(true); }}
-        />
+        {isMinimalPlayer ? (
+          <MinimalPlayer
+            nowPlaying={player.nowPlaying}
+            isPlaying={player.isPlaying}
+            canSeekStations={cards.canSeekStations}
+            countryMap={atlas.countryMap}
+            onPlayPause={player.playPause}
+            onPlayNext={playNext}
+            onPlayPrevious={playPrevious}
+            onMaximize={() => setIsMinimalPlayer(false)}
+            onDismiss={() => {
+              player.stop();
+              setHasDismissedPlayer(true);
+            }}
+          />
+        ) : (
+          <PassportPlayerFooter
+            nowPlaying={player.nowPlaying}
+            isPlaying={player.isPlaying}
+            audioLevel={player.audioLevel}
+            shuffleMode={player.shuffleMode}
+            listeningMode={mode.listeningMode}
+            canSeekStations={cards.canSeekStations}
+            hasStationsToCycle={cards.hasStationsToCycle}
+            countryMap={atlas.countryMap}
+            onPlayPause={player.playPause}
+            onPlayNext={playNext}
+            onPlayPrevious={playPrevious}
+            onShuffleToggle={() => player.setShuffleMode((prev) => !prev)}
+            onQuickRetune={() => setIsQuickRetuneOpen(true)}
+            onBackToWorld={handlers.handleBackToWorldView}
+            onMinimize={() => setIsMinimalPlayer(true)}
+            onDismiss={() => {
+              player.stop();
+              setHasDismissedPlayer(true);
+            }}
+          />
+        )}
       </div>
 
       <audio ref={player.audioRef} className="hidden" />
