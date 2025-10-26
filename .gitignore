@@ -7,6 +7,17 @@ node_modules
 .DS_Store
 .vercel
 
+# Logs
+*.log
+dev_server.log
+start.log
+
+# Scratch/verification files
+jules-scratch/
+
+# VS Code personal settings
+.vscode/mcp.json
+
 # Playwright
 /test-results/
 /playwright-report/
