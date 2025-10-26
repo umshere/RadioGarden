@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Text, Button, ActionIcon, Input, Tooltip } from "@mantine/core";
+import { Text, Button, ActionIcon, Input, Tooltip, Loader } from "@mantine/core";
 import { IconMapPin, IconX, IconArrowsShuffle } from "@tabler/icons-react";
+import { useNavigation } from "@remix-run/react";
+import { useState, useEffect } from "react";
 import { CountryFlag } from "~/components/CountryFlag";
 import type { Country } from "~/types/radio";
 
@@ -27,6 +29,40 @@ export function QuickRetuneWidget({
   onCountrySelect,
   onSurprise,
 }: QuickRetuneWidgetProps) {
+  const navigation = useNavigation();
+  const [loadingCountry, setLoadingCountry] = useState<string | null>(null);
+  const pendingSearch = navigation.location?.search ?? "";
+  const pendingCountry = (() => {
+    try {
+      const url = new URL(pendingSearch, "https://example.com");
+      return url.searchParams.get("country");
+    } catch {
+      return null;
+    }
+  })();
+
+  // Reset loading state when widget closes or navigation completes
+  useEffect(() => {
+    if (!isOpen) {
+      setLoadingCountry(null);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (navigation.state === "idle" && loadingCountry) {
+      // Close widget after a brief delay to show the loaded state
+      const timer = setTimeout(() => {
+        onOpenChange(false);
+        setLoadingCountry(null);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [navigation.state, loadingCountry, onOpenChange]);
+
+  const isLoading = (countryName: string) => {
+    return loadingCountry === countryName || pendingCountry === countryName;
+  };
+
   const previewCountries = activeContinent
     ? (countriesByContinent[activeContinent] ?? []).slice(0, 6)
     : topCountries.slice(0, 6);
@@ -65,7 +101,7 @@ export function QuickRetuneWidget({
                 inset: 0,
                 background: "rgba(2,10,20,0.6)",
                 backdropFilter: "blur(2px)",
-                zIndex: 49,
+                zIndex: 59,
               }}
             />
             {/* Panel */}
@@ -80,7 +116,7 @@ export function QuickRetuneWidget({
               transition={{ duration: 0.22, ease: "easeOut" }}
               className="quick-retune-panel"
               id="quick-retune-panel"
-              style={{ position: "fixed", right: 16, bottom: 84, zIndex: 45 }}
+              style={{ position: "fixed", right: 16, bottom: 84, zIndex: 61 }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") onOpenChange(false);
               }}
@@ -132,11 +168,14 @@ export function QuickRetuneWidget({
                   key={country.name}
                   type="button"
                   className="quick-retune-country"
-                  onClick={() => {
-                    onOpenChange(false);
-                    onCountrySelect(country.name);
+                  onClick={async () => {
+                    setLoadingCountry(country.name);
+                    await onCountrySelect(country.name);
+                    // Don't close here - let the effect handle it
                   }}
                   aria-label={`Retune to ${country.name}`}
+                  style={{ position: "relative" }}
+                  disabled={isLoading(country.name)}
                 >
                   <div className="quick-retune-country__info">
                     <CountryFlag
@@ -149,6 +188,20 @@ export function QuickRetuneWidget({
                   <span className="quick-retune-country__meta">
                     {country.stationcount.toLocaleString()} stations
                   </span>
+                  {/* Loading overlay */}
+                  {isLoading(country.name) && (
+                    <div
+                      className="absolute inset-0 grid place-items-center"
+                      style={{
+                        background: "rgba(2,10,20,0.75)",
+                        backdropFilter: "blur(3px)",
+                        borderRadius: "1rem",
+                      }}
+                      aria-hidden="true"
+                    >
+                      <Loader size="sm" color="yellow" />
+                    </div>
+                  )}
                 </button>
               ))
             )}
@@ -159,10 +212,11 @@ export function QuickRetuneWidget({
               size="xs"
               variant="light"
               leftSection={<IconArrowsShuffle size={14} />}
-              onClick={() => {
-                onOpenChange(false);
-                onSurprise();
+              onClick={async () => {
+                setLoadingCountry("surprise");
+                await onSurprise();
               }}
+              disabled={loadingCountry === "surprise"}
               style={{
                 width: "100%",
                 color: "#0f172a",

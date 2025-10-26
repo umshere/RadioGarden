@@ -109,29 +109,61 @@ export function useEventHandlers({
   );
 
   const handleQuickRetuneCountrySelect = useCallback(
-    (countryName: string) => {
+    async (countryName: string) => {
       atlasNavigation.selectContinentForCountry(countryName);
       mode.setListeningMode("local");
-      setIsQuickRetuneOpen(false);
       navigate(`/?country=${encodeURIComponent(countryName)}`, {
         preventScrollReset: true,
       });
+
+      // Fetch and auto-play the top station from the selected country
+      try {
+        const result = await rbFetchJson<Station[]>(
+          `/json/stations/bycountry/${encodeURIComponent(
+            countryName
+          )}?limit=1&hidebroken=true&order=clickcount&reverse=true`
+        );
+        const [topStation] = result;
+        if (topStation) {
+          vibrate(12);
+          handleStartStation(topStation, { autoPlay: true });
+        }
+      } catch (error) {
+        console.error("Failed to load station from country", error);
+      }
+
       setTimeout(() => scrollToId("station-grid"), 300);
     },
-    [atlasNavigation, mode, navigate, setIsQuickRetuneOpen]
+    [atlasNavigation, mode, navigate, handleStartStation]
   );
 
-  const handleSurpriseRetune = useCallback(() => {
+  const handleSurpriseRetune = useCallback(async () => {
     const pool = topCountries.length > 0 ? topCountries : countries;
     const random = pool[Math.floor(Math.random() * pool.length)];
     if (!random) return;
 
     atlasNavigation.selectContinentForCountry(random.name);
     mode.setListeningMode("local");
-    setIsQuickRetuneOpen(false);
     navigate(`/?country=${encodeURIComponent(random.name)}`, {
       preventScrollReset: true,
     });
+
+    // Fetch and auto-play a random station from the selected country
+    try {
+      const result = await rbFetchJson<Station[]>(
+        `/json/stations/bycountry/${encodeURIComponent(
+          random.name
+        )}?limit=1&hidebroken=true&order=clickcount&reverse=true`
+      );
+      const [topStation] = result;
+      if (topStation) {
+        vibrate(12);
+        handleStartStation(topStation, { autoPlay: true });
+      }
+    } catch (error) {
+      console.error("Failed to load surprise station", error);
+    }
+
     setTimeout(() => scrollToId("station-grid"), 300);
   }, [
     topCountries,
@@ -139,7 +171,7 @@ export function useEventHandlers({
     atlasNavigation,
     mode,
     navigate,
-    setIsQuickRetuneOpen,
+    handleStartStation,
   ]);
 
   const handleMissionExploreWorld = useCallback(() => {

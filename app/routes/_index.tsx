@@ -365,7 +365,7 @@ export default function Index() {
       </main>
 
       <QuickRetuneWidget isOpen={isQuickRetuneOpen} onOpenChange={setIsQuickRetuneOpen} continents={derived.continents}
-        activeContinent={atlas.selectedContinent} onContinentSelect={handlers.handleContinentSelect}
+        activeContinent={atlas.activeContinent} onContinentSelect={handlers.handleContinentSelect}
         countriesByContinent={derived.continentData} topCountries={topCountries}
         onCountrySelect={handlers.handleQuickRetuneCountrySelect} onSurprise={handlers.handleSurpriseRetune}
       />
