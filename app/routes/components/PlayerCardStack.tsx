@@ -280,39 +280,37 @@ export function PlayerCardStack({
         
         {/* Card content - revealed on hover */}
         <div className="travel-stack__content">
-          {/* Top: Flag right-aligned */}
-          <div className="travel-stack__top-row">
-            {stationCountryMeta?.iso_3166_1 && (
+          {stationCountryMeta?.iso_3166_1 && (
+            <div className="travel-stack__flag">
               <CountryFlag
                 iso={stationCountryMeta.iso_3166_1}
-                size={64}
                 title={countryLabel}
+                width={60}
+                height={40}
               />
-            )}
-          </div>
-          
-          {/* Center: Large station title */}
-          <div className="travel-stack__title-section">
-            <h3 className="travel-stack__station-name">
-              {station.name}
-            </h3>
-          </div>
-          
-          {/* Bottom row: Disc left, Metadata right */}
-          <div className="travel-stack__bottom-row">
+            </div>
+          )}
+          <div className="travel-stack__main">
             <StationDisc
               station={station}
               isActive={false}
               isNowPlaying={isNowPlaying}
               initials={stationInitials}
             />
-            <div className="travel-stack__metadata">
-              <Text size="xs" c="rgba(148,163,184,0.75)" lineClamp={1}>
-                {station.language || 'Unknown'}
-              </Text>
-              <Text size="xs" c="rgba(199,158,73,0.8)" fw={500} lineClamp={1}>
-                {station.codec?.toUpperCase() || 'MP3'} · {station.bitrate && station.bitrate > 0 ? `${station.bitrate} kbps` : '128 kbps'}
-              </Text>
+            <div className="travel-stack__text">
+              <div className="travel-stack__title-section">
+                <h3 className="travel-stack__station-name">
+                  {station.name}
+                </h3>
+              </div>
+              <div className="travel-stack__metadata">
+                <Text size="xs" c="rgba(148,163,184,0.75)" lineClamp={1}>
+                  {station.language || 'Unknown'}
+                </Text>
+                <Text size="xs" c="rgba(199,158,73,0.8)" fw={500} lineClamp={1}>
+                  {station.codec?.toUpperCase() || 'MP3'} · {station.bitrate && station.bitrate > 0 ? `${station.bitrate} kbps` : '128 kbps'}
+                </Text>
+              </div>
             </div>
           </div>
           

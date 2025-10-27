@@ -654,30 +654,30 @@
   /* Tab badge - positioned on top edge like folder tab */
   .travel-stack__tab-badge {
     position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 0.75rem;
+    right: 1.15rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 3rem;
-    height: 2.15rem;
-    padding: 0 0.75rem;
-    border-radius: 0.65rem;
+    min-width: 2.35rem;
+    height: 1.6rem;
+    padding: 0 0.55rem;
+    border-radius: 0.55rem;
     background: linear-gradient(135deg, rgba(254, 250, 226, 0.95) 0%, rgba(244, 237, 224, 0.92) 100%);
-    border: 2px solid rgba(199, 158, 73, 0.6);
-    font-size: 1rem;
+    border: 1.5px solid rgba(199, 158, 73, 0.55);
+    font-size: 0.82rem;
     font-weight: 700;
     color: rgba(15, 23, 42, 0.95);
-    letter-spacing: 0.02em;
+    letter-spacing: 0.08em;
     box-shadow: 0 4px 12px rgba(199, 158, 73, 0.25), 
                 0 2px 4px rgba(0, 0, 0, 0.15);
-    z-index: 10;
+    z-index: 2;
+    pointer-events: none;
     transition: all 0.3s ease;
   }
 
   .travel-stack__card:hover .travel-stack__tab-badge {
-    transform: translateX(-50%) scale(1.08);
+    transform: scale(1.04);
     box-shadow: 0 6px 18px rgba(199, 158, 73, 0.35), 
                 0 2px 6px rgba(0, 0, 0, 0.2);
   }
@@ -744,8 +744,8 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 0.3rem;
+    justify-content: center;
+    gap: 0.45rem;
     opacity: 0.6;
     transition: opacity 0.3s ease;
   }
@@ -754,30 +754,58 @@
     opacity: 1;
   }
 
-  /* Top row: Flag right-aligned */
-  .travel-stack__top-row {
+  .travel-stack__flag {
+    position: absolute;
+    top: 0.55rem;
+    right: 1.15rem;
+    width: 60px;
+    height: 40px;
     display: flex;
-    align-items: flex-start;
     justify-content: flex-end;
-    min-height: 32px;
+    align-items: flex-start;
+    z-index: 2;
+    pointer-events: none;
   }
 
-  /* Center: Large station title */
-  .travel-stack__title-section {
-    flex: 1;
+  .travel-stack__main {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.85rem;
+    flex: 1;
+    min-width: 0;
+    padding-right: 4.5rem; /* reserve space for flag */
+  }
+
+  .travel-stack__main .travel-trail__disc-wrap {
+    align-self: center;
+    padding: 0.1rem 0.2rem 0.1rem 0;
+  }
+
+  .travel-stack__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    justify-content: space-between;
+    padding: 0.45rem 2.6rem 0.2rem 0;
+  }
+
+  /* Center: Station title */
+  .travel-stack__title-section {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
     min-height: 0;
-    padding: 0.2rem 0;
   }
 
   .travel-stack__station-name {
-    font-size: 1.5rem;
+    font-size: 1.08rem;
     font-weight: 600;
     color: rgba(254, 250, 226, 0.98);
-    line-height: 1.25;
-    text-align: center;
+    line-height: 1.32;
+    text-align: left;
     margin: 0;
     overflow: hidden;
     display: -webkit-box;
@@ -787,24 +815,13 @@
     word-break: break-word;
   }
 
-  /* Bottom row: Disc left, Metadata right */
-  .travel-stack__bottom-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    min-height: 36px;
-  }
-
   .travel-stack__metadata {
-    flex: 1;
-    min-width: 0;
-    max-width: 180px;
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    align-items: flex-end;
-    text-align: right;
+    align-items: flex-start;
+    text-align: left;
+    min-width: 0;
     overflow: hidden;
   }
 

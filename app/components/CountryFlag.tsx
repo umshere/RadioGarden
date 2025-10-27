@@ -67,9 +67,15 @@ type CountryFlagProps = {
   iso?: string;
   size?: number;
   title: string;
+  width?: number;
+  height?: number;
 };
 
-export function CountryFlag({ iso, size = 48, title }: CountryFlagProps) {
+export function CountryFlag({ iso, size = 48, title, width, height }: CountryFlagProps) {
+  const flagWidth = width ?? size;
+  const flagHeight = height ?? size;
+  const flagRadius = Math.min(flagWidth, flagHeight) / 6;
+
   if (iso && iso.length === 2) {
     return (
       <ReactCountryFlagComponent
@@ -77,9 +83,9 @@ export function CountryFlag({ iso, size = 48, title }: CountryFlagProps) {
         countryCode={iso}
         title={title}
         style={{
-          width: size,
-          height: size,
-          borderRadius: size / 6,
+          width: flagWidth,
+          height: flagHeight,
+          borderRadius: flagRadius,
           boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
         }}
       />
@@ -88,13 +94,18 @@ export function CountryFlag({ iso, size = 48, title }: CountryFlagProps) {
 
   return (
     <ThemeIcon
-      size={size}
+      size={Math.max(flagWidth, flagHeight)}
       radius="md"
       variant="gradient"
       gradient={{ from: "cyan", to: "violet", deg: 135 }}
       aria-label="Global"
+      style={{
+        width: flagWidth,
+        height: flagHeight,
+        minWidth: flagWidth,
+      }}
     >
-      <IconBroadcast size={size * 0.6} stroke={1.5} />
+      <IconBroadcast size={Math.min(flagWidth, flagHeight) * 0.6} stroke={1.5} />
     </ThemeIcon>
   );
 }
