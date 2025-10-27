@@ -307,9 +307,6 @@ export function PlayerCardStack({
               initials={stationInitials}
             />
             <div className="travel-stack__metadata">
-              <Text size="sm" fw={500} c="rgba(226,232,240,0.85)" lineClamp={1} style={{ maxWidth: '100%' }}>
-                {countryLabel}
-              </Text>
               <Text size="xs" c="rgba(148,163,184,0.75)" lineClamp={1}>
                 {station.language || 'Unknown'}
               </Text>
@@ -337,7 +334,7 @@ export function PlayerCardStack({
           <div className="travel-log__header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <img 
-                src="/icon.png" 
+                src="/radio-passport-icon.png" 
                 alt="Radio Passport" 
                 style={{ 
                   width: '2.5rem', 
