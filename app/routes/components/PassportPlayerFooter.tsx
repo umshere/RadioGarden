@@ -89,10 +89,12 @@ export function PassportPlayerFooter({
 
             {/* Compact Equalizer with Music Notes */}
             <Equalizer 
+              key={nowPlaying.uuid}
               isPlaying={isPlaying} 
               audioLevel={audioLevel} 
               barCount={50}
               musicNotes={floatingNotes}
+              stationKey={nowPlaying.uuid}
             />
           </div>
         </div>

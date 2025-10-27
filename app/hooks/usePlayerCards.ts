@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Station, ListeningMode, PlayerCard } from "~/types/radio";
 import { dedupeStations } from "~/utils/geography";
+import { rankStations } from "~/utils/stationMeta";
 
 export function usePlayerCards(
   recentStations: Station[],
@@ -20,17 +21,22 @@ export function usePlayerCards(
     return recentStations;
   };
 
+  const recentOrderMap = useMemo(() => {
+    const map = new Map<string, number>();
+    recentStations.forEach((station, index) => {
+      map.set(station.uuid, index);
+    });
+    return map;
+  }, [recentStations]);
+
   const deckStations = useMemo(() => {
     const pool = resolveActiveStations();
-    return dedupeStations([...recentStations, ...pool]).slice(0, 12);
-  }, [recentStations, stations, exploreStations, listeningMode]);
+    const combined = dedupeStations([...recentStations, ...pool]);
+    return rankStations(combined, { recentOrder: recentOrderMap }).slice(0, 12);
+  }, [recentStations, stations, exploreStations, listeningMode, recentOrderMap]);
 
   const playerCards = useMemo<PlayerCard[]>(() => {
-    const cards: PlayerCard[] = [{ type: "mission" }];
-    for (const station of deckStations) {
-      cards.push({ type: "station", station });
-    }
-    return cards;
+    return deckStations.map((station) => ({ type: "station", station }));
   }, [deckStations]);
 
   const activeStationsSnapshot = resolveActiveStations();

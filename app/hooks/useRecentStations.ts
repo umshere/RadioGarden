@@ -7,7 +7,7 @@ export function useRecentStations() {
   const addToRecent = useCallback((station: Station) => {
     setRecentStations((prev) => {
       const filtered = prev.filter((s) => s.uuid !== station.uuid);
-      return [station, ...filtered].slice(0, 12);
+      return [station, ...filtered]; // Keep all stations, no limit
     });
   }, []);
 

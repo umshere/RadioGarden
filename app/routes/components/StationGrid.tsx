@@ -43,7 +43,7 @@ export function StationGrid({
         const isFavorite = favoriteStationIds?.has(station.uuid) ?? false;
         return (
           <StationCard
-            key={station.uuid}
+            key={`${station.uuid}-${index}`}
             station={station}
             index={index}
             isCurrent={isCurrent}

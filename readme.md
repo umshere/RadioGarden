@@ -6,17 +6,16 @@ Radio Passport is a beautiful, web-based radio player that lets you explore and 
 
 > Documentation: See the docs index at [docs/README.md](./docs/README.md) for guides, plans, and testing.
 
-![Radio Passport Interface](https://via.placeholder.com/800x400/1a1a1a/ffd700?text=Radio+Passport+Interface)
-
 ## ✨ Features
 
-- **🌍 Global Radio Atlas**: Explore radio stations from 80+ countries across 7 continents
-- **📻 Massive Station Database**: Access to 50,000+ verified radio stations
-- **🎨 Beautiful Interface**: Dark theme with golden accents, inspired by travel and discovery
-- **🔍 Smart Search**: Find countries and stations quickly with built-in search
-- **⭐ Favorites**: Save your favorite stations for easy access
-- **📱 Responsive Design**: Works perfectly on desktop and mobile devices
-- **⚡ Fast & Free**: No ads, no subscriptions, just pure radio discovery
+- **🌍 Global Radio Atlas**: Explore stations from 80+ countries across 7 continents
+- **🧭 Travel Trail Player**: Horizontal “trail” keeps recent stations visible with resume/next inline
+- **📊 Stream Health Signals**: Radio Browser data is normalized to drop broken stations and surface reliable ones
+- **🔥 Trending Radar**: Votes & clicktrend surface what's hot right now across the globe
+- **🔍 Smart Search**: Filter countries instantly and jump via Quick Retune
+- **⭐ Favorites**: Heart any station and find it again in seconds
+- **🎨 Designed for Discovery**: Dark passport aesthetic with Mantine + Tailwind polish
+- **📱 Fully Responsive**: Optimised layouts from phones to ultrawide displays
 
 ## 🚀 Quick Start
 
@@ -110,8 +109,10 @@ app/
 └── utils/              # Utility functions
     ├── geography.ts       # Continent/country mapping
     ├── haptics.ts         # Vibration feedback
-    ├── radioBrowser.ts    # API client with fallback
-    └── scrollHelpers.ts   # Scroll utilities
+    ├── radioBrowser.ts    # API client with mirror fallback
+    ├── scrollHelpers.ts   # Scroll utilities
+    ├── stations.ts        # Radio Browser → internal Station normaliser
+    └── stationMeta.ts     # Health scoring & ranking helpers
 ```
 
 **Code Quality Improvements (Oct 2025):**
@@ -122,53 +123,48 @@ app/
 - ✅ **DRY principles** eliminate code duplication
 - ✅ **Clean architecture** with clear separation of responsibilities
 
-## 🎯 Implementation Status (Updated Oct 24, 2025)
+## 🎯 Implementation Status (Updated Oct 26, 2025)
 
 ### ✅ Completed Features
 
-**Radio Browser API Connection Fix**
+**Travel Trail Player**
 
-- Resilient `rbFetchJson` utility with automatic mirror fallback
-- Tries multiple servers (de2, fi1, de1, fr1, nl1, gb1, us1)
-- Caches working server for performance
-- All API calls updated
+- Replaced vertical stack with horizontal, scroll-snapping trail
+- Active card now expands inline with badges, tags, and controls
+- Resume/Next controls live on the active card
+- Always visible: no collapsible queue required
+- Animated dotted connector communicates progression and keyboard navigation is supported
 
-**Player ↔ Atlas Synchronisation**
+**Station Normalisation Layer**
 
-- Play controls update continent/country context
-- Debounced scrolling (200ms)
-- Smooth transitions with `preventScrollReset`
+- New `normalizeStations` utility converts Radio Browser payloads to our internal types
+- Drops broken stations (missing uuid/name/url) and casts bitrate/codec safely
+- Guarantees dedupe logic works across recent, explore, and country feeds
 
-**Shuffle Mode & Scrolling**
+**Radio Browser Hygiene**
 
-- Fixed page jump bugs
-- Smooth centering with guards
-- Proper null checks
+- Every fetch path (loader, quick retune, “surprise me”, explore mode) now runs through the normaliser
+- Ready to surface additional metadata (e.g. `lastcheckok`) without reworking consumers
+- Trail and station grid surface health/trending badges derived from normalised metadata
 
-**Quick Retune Improvements**
+**Quick Retune + Atlas Improvements**
 
-- No page jumping during selections
-- Smooth scroll to station grid
-- Consistent navigation behavior
+- Scroll targets adjusted for the always-on travel trail
+- Continent selects continue to respect listening mode and atlas focus
 
-**Listening Mode Toggle**
+## 📡 Radio Browser Normalisation
 
-- Header placement for visibility
-- World/Local mode switching
-- Visual feedback animations
+Radio Browser responses expose dozens of fields (`stationuuid`, `url_resolved`, `lastcheckok`, etc.).
+Our `app/utils/stations.ts` helper converts those payloads into the lean `Station` shape the UI
+expects:
 
-**Skeleton UI & Loading States**
+- Enforces required fields (`uuid`, `name`, `url`); broken entries are ignored.
+- Prefers `url_resolved` when present, but gracefully falls back to `url`.
+- Normalises country codes, tags, and bitrate values so dedupe logic stays reliable.
+- Keeps homepage links for stations without stream URLs so the UI can offer a "Visit station" fallback.
 
-- Shimmer animations
-- Request-state driven
-- Prevents layout shifts
-
-**User Journey Revamp**
-
-- Streamlined from 6 to 4 buttons
-- Hero: "Start Your Journey" + "Quick Retune"
-- Mission Card: "Explore World" + "Explore [Country]"
-- Clear, contextual flow
+With a single ingestion point it’s easy to add more user-facing context later (e.g. stream
+reliability badges, trending signals) without touching every consumer.
 
 ### 📋 Next Steps
 
@@ -178,14 +174,6 @@ app/
 ## 🌟 Key Statistics
 
 - **80** Countries Featured
-- **50,520** Stations Tracked
-- **7** Continents Covered
-- **24/7** Live Streaming
-
-- **80** Countries Featured
-- **50,520** Stations Tracked
-- **7** Continents Covered
-- **24/7** Live Streaming
 - **50,520** Stations Tracked
 - **7** Continents Covered
 - **24/7** Live Streaming

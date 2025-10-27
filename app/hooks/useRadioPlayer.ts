@@ -17,12 +17,21 @@ export function useRadioPlayer() {
 
     if (!nowPlaying) {
       audio.pause();
+      audio.src = "";
       setIsPlaying(false);
       return;
     }
 
-    if (audio.src !== nowPlaying.url) {
-      audio.src = nowPlaying.url;
+    const streamUrl = nowPlaying.streamUrl ?? nowPlaying.url ?? "";
+    if (!streamUrl) {
+      audio.pause();
+      audio.src = "";
+      setIsPlaying(false);
+      return;
+    }
+
+    if (audio.src !== streamUrl) {
+      audio.src = streamUrl;
     }
 
     if (autoPlayRef.current) {
@@ -65,8 +74,9 @@ export function useRadioPlayer() {
 
   const startStation = useCallback(
     (station: Station, options?: { autoPlay?: boolean }) => {
+      const hasStream = Boolean(station.streamUrl ?? station.url);
       const autoPlay = options?.autoPlay ?? false;
-      autoPlayRef.current = autoPlay;
+      autoPlayRef.current = autoPlay && hasStream;
       setNowPlaying(station);
     },
     []

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import type { Station, ListeningMode } from "~/types/radio";
 import { rbFetchJson } from "~/utils/radioBrowser";
 import { dedupeStations } from "~/utils/geography";
+import { normalizeStations } from "~/utils/stations";
+import { rankStations } from "~/utils/stationMeta";
 
 export function useListeningMode() {
   const [listeningMode, setListeningMode] = useState<ListeningMode>("local");
@@ -32,11 +34,13 @@ export function useListeningMode() {
     const fetchExploreStations = async () => {
       setIsFetchingExplore(true);
       try {
-        const payload = await rbFetchJson<Station[]>(
+        const payload = await rbFetchJson<unknown>(
           `/json/stations/topvote/120?hidebroken=true&order=clicktrend&reverse=true`
         );
-        if (!cancelled && Array.isArray(payload)) {
-          setExploreStations(dedupeStations(payload).slice(0, 120));
+        if (!cancelled) {
+          const normalized = normalizeStations(Array.isArray(payload) ? payload : []);
+          const ranked = rankStations(dedupeStations(normalized));
+          setExploreStations(ranked.slice(0, 120));
         }
       } catch (error) {
         console.error("Failed to fetch global stations", error);

@@ -1,3 +1,5 @@
+import type { Station } from "~/types/radio";
+
 export function getContinent(iso2?: string): string {
   if (!iso2) return "Other";
 
@@ -84,27 +86,31 @@ export type Country = {
   stationcount: number;
 };
 
-export type Station = {
-  uuid: string;
-  name: string;
-  url: string;
-  favicon: string;
-  country: string;
-  state: string | null;
-  language: string | null;
-  tags: string | null;
-  bitrate: number;
-  codec: string | null;
-};
-
 export function dedupeStations(stations: Station[]): Station[] {
   const seen = new Set<string>();
   const unique: Station[] = [];
   for (const station of stations) {
-    if (!seen.has(station.uuid)) {
-      seen.add(station.uuid);
+    const key = createStationKey(station);
+    if (!seen.has(key)) {
+      seen.add(key);
       unique.push(station);
     }
   }
   return unique;
+}
+
+function createStationKey(station: Station): string {
+  const fingerprint = getStreamFingerprint(station);
+  return `${station.uuid}::${fingerprint}`;
+}
+
+function getStreamFingerprint(station: Station): string {
+  const source = station.streamUrl || station.url || "";
+  if (!source) return "no-stream";
+  try {
+    const url = new URL(source);
+    return `${url.origin}${url.pathname}`.toLowerCase();
+  } catch {
+    return source;
+  }
 }

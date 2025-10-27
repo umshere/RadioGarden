@@ -10,6 +10,8 @@ import PassportStampIcon from "~/components/PassportStampIcon";
 import { BRAND } from "~/constants/brand";
 import { getContinent } from "~/utils/geography";
 import { rbFetchJson } from "~/utils/radioBrowser";
+import { normalizeStations } from "~/utils/stations";
+import { rankStations, pickTopStation } from "~/utils/stationMeta";
 import { vibrate } from "~/utils/haptics";
 import type { Country, Station } from "~/types/radio";
 
@@ -47,11 +49,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   try {
     const countries: Country[] = await rbFetchJson(`/json/countries`);
     let stations: Station[] = [];
-    
+
     if (country) {
-      stations = await rbFetchJson(
+      const rawStations = await rbFetchJson<unknown>(
         `/json/stations/bycountry/${encodeURIComponent(country)}?limit=100&hidebroken=true&order=clickcount&reverse=true`
       );
+      const normalized = normalizeStations(Array.isArray(rawStations) ? rawStations : []);
+      stations = rankStations(normalized);
     }
 
     return json({ countries, stations, selectedCountry: country });
@@ -91,7 +95,6 @@ export default function Index() {
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [cardDirection, setCardDirection] = useState<1 | -1>(1);
   const [isQuickRetuneOpen, setIsQuickRetuneOpen] = useState(false);
-  const [showQueue, setShowQueue] = useState(false);
   const [hasDismissedPlayer, setHasDismissedPlayer] = useState(false);
   const [showNavigationIndicator, setShowNavigationIndicator] = useState(false);
   const [isMinimalPlayer, setIsMinimalPlayer] = useState(false);
@@ -127,23 +130,20 @@ export default function Index() {
   );
 
   // Core event handler
-  const handleStartStation = useCallback((station: Station, options?: { autoPlay?: boolean }) => {
+  const handleStartStation = useCallback((station: Station, options?: { autoPlay?: boolean; preserveQueue?: boolean }) => {
     atlasNavigation.selectContinentForCountry(station.country);
-    setShowQueue(false);
     setHasDismissedPlayer(false);
     player.startStation(station, { autoPlay: options?.autoPlay ?? true });
-  }, [player, atlasNavigation]);
+  }, [atlasNavigation, player, setHasDismissedPlayer]);
 
   // All other event handlers
   const handlers = useEventHandlers({
     player,
     mode,
     atlas,
-    cards,
     navigate,
     selectedCountry,
     stations,
-    setShowQueue,
     setHasDismissedPlayer,
     setIsQuickRetuneOpen,
     setActiveCardIndex,
@@ -199,7 +199,10 @@ export default function Index() {
     let cancelled = false;
     const loadStation = async () => {
       try {
-        const [station] = await rbFetchJson<Station[]>(`/json/stations/byname/ISHQ FM 104.8?limit=1&hidebroken=true`);
+        const raw = await rbFetchJson<unknown>(
+          `/json/stations/byname/ISHQ FM 104.8?limit=1&hidebroken=true`
+        );
+        const station = pickTopStation(normalizeStations(Array.isArray(raw) ? raw : []));
         if (!station || cancelled) return;
 
         const continent = atlasNavigation.selectContinentForCountry(station.country) ?? "Asia";
@@ -220,7 +223,7 @@ export default function Index() {
     const stationIndex = cards.playerCards.findIndex(
       (card) => card.type === "station" && card.station.uuid === player.nowPlaying!.uuid
     );
-    if (stationIndex > 0 && stationIndex !== activeCardIndex) {
+    if (stationIndex >= 0 && stationIndex !== activeCardIndex) {
       setCardDirection(stationIndex > activeCardIndex ? 1 : -1);
       setActiveCardIndex(stationIndex);
     }
@@ -334,23 +337,21 @@ export default function Index() {
         ) : (
           <>
             <CountryOverview selectedCountry={selectedCountry} selectedCountryMeta={selectedCountryMeta}
-              stationCount={stations.length} onBack={handlers.handleBackToWorldView} showQueue={showQueue} onToggleQueue={() => setShowQueue((s) => !s)}
+              stationCount={stations.length} onBack={handlers.handleBackToWorldView}
             />
 
-            {(!player.nowPlaying || showQueue) && (
-              <CollapsibleSection title="Player queue" defaultOpen>
-                <PlayerCardStack playerCards={cards.playerCards} activeCardIndex={activeCardIndex} cardDirection={cardDirection}
-                  nowPlaying={player.nowPlaying} isPlaying={player.isPlaying} listeningMode={mode.listeningMode}
-                  favoriteStationIds={favoriteStationIds} countryMap={atlas.countryMap} hasStationsToCycle={cards.hasStationsToCycle}
-                  isFetchingExplore={mode.isFetchingExplore} localStationCount={stations.length}
-                  globalStationCount={mode.exploreStations.length || Math.max(cards.deckStations.length - 1, 0)} selectedCountry={selectedCountry}
-                  onCardChange={handleCardChange} onCardJump={handleCardJump} onToggleFavorite={handleToggleFavorite}
-                  onStartStation={handleStartStation} onPlayPause={player.playPause} onPlayNext={playNext}
-                  onSetListeningMode={mode.setListeningMode} onMissionExploreWorld={handlers.handleMissionExploreWorld}
-                  onMissionStayLocal={handlers.handleMissionStayLocal}
-                />
-              </CollapsibleSection>
-            )}
+            <PlayerCardStack playerCards={cards.playerCards} activeCardIndex={activeCardIndex} cardDirection={cardDirection}
+              nowPlaying={player.nowPlaying} isPlaying={player.isPlaying} listeningMode={mode.listeningMode}
+              stackStations={cards.deckStations}
+              recentStations={recentStations}
+              favoriteStationIds={favoriteStationIds} countryMap={atlas.countryMap} hasStationsToCycle={cards.hasStationsToCycle}
+              isFetchingExplore={mode.isFetchingExplore} localStationCount={stations.length}
+              globalStationCount={mode.exploreStations.length || cards.deckStations.length} selectedCountry={selectedCountry}
+              onCardChange={handleCardChange} onCardJump={handleCardJump} onToggleFavorite={handleToggleFavorite}
+              onStartStation={handleStartStation} onPlayPause={player.playPause} onPlayNext={playNext}
+              onSetListeningMode={mode.setListeningMode} onMissionExploreWorld={handlers.handleMissionExploreWorld}
+              onMissionStayLocal={handlers.handleMissionStayLocal}
+            />
 
             <CollapsibleSection title={`Stations in ${selectedCountry}`} defaultOpen id="stations">
               <section className="mt-4">

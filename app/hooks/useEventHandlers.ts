@@ -9,22 +9,22 @@ import {
   scrollToSelector,
   scrollIfOffscreen,
 } from "~/utils/scrollHelpers";
+import { normalizeStations } from "~/utils/stations";
+import { pickTopStation } from "~/utils/stationMeta";
 
 interface UseEventHandlersProps {
   player: any;
   mode: any;
   atlas: any;
-  cards: any;
   navigate: NavigateFunction;
   selectedCountry: string | null;
   stations: Station[];
-  setShowQueue: (show: boolean | ((prev: boolean) => boolean)) => void;
   setHasDismissedPlayer: (dismissed: boolean) => void;
   setIsQuickRetuneOpen: (open: boolean) => void;
   setActiveCardIndex: (index: number) => void;
   handleStartStation: (
     station: Station,
-    options?: { autoPlay?: boolean }
+    options?: { autoPlay?: boolean; preserveQueue?: boolean }
   ) => void;
   topCountries: Country[];
   countries: Country[];
@@ -45,7 +45,6 @@ export function useEventHandlers({
   navigate,
   selectedCountry,
   stations,
-  setShowQueue,
   setHasDismissedPlayer,
   setIsQuickRetuneOpen,
   setActiveCardIndex,
@@ -57,12 +56,13 @@ export function useEventHandlers({
   const handlePreviewCountryPlay = useCallback(
     async (countryName: string) => {
       try {
-        const result = await rbFetchJson<Station[]>(
+        const payload = await rbFetchJson<unknown>(
           `/json/stations/bycountry/${encodeURIComponent(
             countryName
           )}?limit=1&hidebroken=true&order=clickcount&reverse=true`
         );
-        const [first] = result;
+        const stations = normalizeStations(Array.isArray(payload) ? payload : []);
+        const first = pickTopStation(stations);
         if (first) {
           vibrate(12);
           handleStartStation(first);
@@ -118,12 +118,13 @@ export function useEventHandlers({
 
       // Fetch and auto-play the top station from the selected country
       try {
-        const result = await rbFetchJson<Station[]>(
+        const payload = await rbFetchJson<unknown>(
           `/json/stations/bycountry/${encodeURIComponent(
             countryName
           )}?limit=1&hidebroken=true&order=clickcount&reverse=true`
         );
-        const [topStation] = result;
+        const stations = normalizeStations(Array.isArray(payload) ? payload : []);
+        const topStation = pickTopStation(stations);
         if (topStation) {
           vibrate(12);
           handleStartStation(topStation, { autoPlay: true });
@@ -150,12 +151,13 @@ export function useEventHandlers({
 
     // Fetch and auto-play a random station from the selected country
     try {
-      const result = await rbFetchJson<Station[]>(
+      const payload = await rbFetchJson<unknown>(
         `/json/stations/bycountry/${encodeURIComponent(
           random.name
         )}?limit=1&hidebroken=true&order=clickcount&reverse=true`
       );
-      const [topStation] = result;
+      const stations = normalizeStations(Array.isArray(payload) ? payload : []);
+      const topStation = pickTopStation(stations);
       if (topStation) {
         vibrate(12);
         handleStartStation(topStation, { autoPlay: true });

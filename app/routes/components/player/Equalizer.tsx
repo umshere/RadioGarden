@@ -7,16 +7,17 @@ type EqualizerProps = {
   audioLevel: number;
   barCount?: number;
   musicNotes?: FloatingNote[];
+  stationKey?: string;
 };
 
-export function Equalizer({ isPlaying, audioLevel, barCount = 50, musicNotes }: EqualizerProps) {
+export function Equalizer({ isPlaying, audioLevel, barCount = 50, musicNotes, stationKey }: EqualizerProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="relative flex h-6 items-end justify-center gap-[1.5px] border-t border-white/5 bg-black/10 px-4 overflow-visible"
     >
-      {musicNotes && <MusicNotesAnimation notes={musicNotes} />}
+      {musicNotes && <MusicNotesAnimation key={stationKey} notes={musicNotes} isPlaying={isPlaying} />}
       
       {Array.from({ length: barCount }).map((_, index) => {
         const idleHeight = 20 + Math.random() * 10;

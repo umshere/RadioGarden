@@ -9,8 +9,6 @@ type CountryOverviewProps = {
   selectedCountryMeta: Country | null;
   stationCount: number;
   onBack: () => void;
-  showQueue?: boolean;
-  onToggleQueue?: () => void;
 };
 
 export function CountryOverview({
@@ -18,8 +16,6 @@ export function CountryOverview({
   selectedCountryMeta,
   stationCount,
   onBack,
-  showQueue,
-  onToggleQueue,
 }: CountryOverviewProps) {
   return (
     <motion.section
@@ -54,23 +50,6 @@ export function CountryOverview({
             >
               {stationCount.toLocaleString()} stations catalogued
             </Badge>
-            {typeof onToggleQueue === "function" && (
-              <Button
-                radius="xl"
-                variant="light"
-                onClick={onToggleQueue}
-                aria-pressed={!!showQueue}
-                style={{
-                  background: showQueue
-                    ? "rgba(199,158,73,0.22)"
-                    : "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(148,163,184,0.25)",
-                  color: "#fefae0",
-                }}
-              >
-                {showQueue ? "Hide queue" : "Show queue"}
-              </Button>
-            )}
           </div>
         </div>
 

@@ -1,31 +1,70 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useSwipeable } from "react-swipeable";
-import { Text, Title, Button, Badge, ThemeIcon, Avatar, ActionIcon, Tooltip } from "@mantine/core";
+import { useMemo, useEffect, useRef, useCallback, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import { motion } from "framer-motion";
+import { Text, Title, Button, Badge, ActionIcon } from "@mantine/core";
 import {
-  IconBroadcast,
   IconHeadphones,
   IconPlayerPlayFilled,
   IconPlayerPauseFilled,
   IconPlayerTrackNext,
-  IconPlayerTrackPrev,
-  IconWaveSine,
-  IconDisc,
-  IconLanguage,
-  IconMusic,
-  IconExternalLink,
   IconHeart,
-  IconCompass,
+  IconExternalLink,
+  IconShieldCheck,
+  IconAlertTriangle,
+  IconTrendingUp,
+  IconChevronLeft,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { CountryFlag } from "~/components/CountryFlag";
+import PassportStampIcon from "~/components/PassportStampIcon";
 import type { Station, PlayerCard, ListeningMode } from "~/types/radio";
+import { deriveStationHealth, getHealthBadgeStyle } from "~/utils/stationMeta";
 
-type PlayerCardStackProps = {
+type StationDiscProps = {
+  station: Station;
+  isActive: boolean;
+  isNowPlaying: boolean;
+  initials: string;
+};
+
+function StationDisc({ station, isActive, isNowPlaying, initials }: StationDiscProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(station.favicon) && !imageFailed;
+
+  return (
+    <div className={`travel-trail__disc-wrap ${isActive ? "travel-trail__disc-wrap--active" : ""}`}>
+      <div
+        className={`travel-trail__disc ${isActive ? "travel-trail__disc--active" : ""} ${
+          showImage ? "" : "travel-trail__disc--fallback"
+        }`}
+      >
+        {showImage ? (
+          <img
+            src={station.favicon}
+            alt=""
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <span className="travel-trail__disc-initials" aria-hidden="true">
+            {initials}
+          </span>
+        )}
+        {isNowPlaying && <span className="travel-trail__disc-pill">Live</span>}
+      </div>
+    </div>
+  );
+}
+
+export type PlayerCardStackProps = {
   playerCards: PlayerCard[];
   activeCardIndex: number;
   cardDirection: 1 | -1;
   nowPlaying: Station | null;
   isPlaying: boolean;
   listeningMode: ListeningMode;
+  stackStations: Station[];
+  recentStations: Station[];
   favoriteStationIds: Set<string>;
   countryMap: Map<string, { name: string; iso_3166_1: string; stationcount: number }>;
   hasStationsToCycle: boolean;
@@ -36,38 +75,15 @@ type PlayerCardStackProps = {
   onCardChange: (direction: 1 | -1) => void;
   onCardJump: (index: number) => void;
   onToggleFavorite: (station: Station) => void;
-  onStartStation: (station: Station, options?: { autoPlay?: boolean }) => void;
+  onStartStation: (
+    station: Station,
+    options?: { autoPlay?: boolean; preserveQueue?: boolean }
+  ) => void;
   onPlayPause: () => void;
   onPlayNext: () => void;
   onSetListeningMode: (mode: ListeningMode) => void;
   onMissionExploreWorld: () => void;
   onMissionStayLocal: () => void;
-};
-
-const PLAYER_CARD_VARIANTS = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 60 : -60,
-    opacity: 0,
-    rotate: direction * 0.8,
-    scale: 0.95,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-    rotate: 0,
-    scale: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? -60 : 60,
-    opacity: 0,
-    rotate: direction * -0.8,
-    scale: 0.95,
-  }),
-} as const;
-
-const PLAYER_CARD_TRANSITION = {
-  duration: 0.35,
-  ease: [0.42, 0, 0.58, 1] as const,
 };
 
 export function PlayerCardStack({
@@ -77,6 +93,8 @@ export function PlayerCardStack({
   nowPlaying,
   isPlaying,
   listeningMode,
+  stackStations,
+  recentStations,
   favoriteStationIds,
   countryMap,
   hasStationsToCycle,
@@ -94,426 +112,307 @@ export function PlayerCardStack({
   onMissionExploreWorld,
   onMissionStayLocal,
 }: PlayerCardStackProps) {
-  const cardSwipeHandlers = useSwipeable({
-    onSwipedLeft: () => onCardChange(1),
-    onSwipedRight: () => onCardChange(-1),
-    trackMouse: true,
-  });
+  const [newlyAddedStations, setNewlyAddedStations] = useState<Set<string>>(new Set());
+  const previousStationsRef = useRef<Set<string>>(new Set());
+  
+  const stationCards = useMemo(
+    () =>
+      playerCards.filter(
+        (card): card is { type: "station"; station: Station } => card.type === "station"
+      ),
+    [playerCards]
+  );
 
-  const activeCard = playerCards[activeCardIndex] ?? playerCards[0] ?? { type: "mission" };
-  const totalCards = playerCards.length;
-  const activeStationCard = activeCard.type === "station" ? activeCard.station : null;
-  const activeStationIsCurrent = activeStationCard
-    ? nowPlaying?.uuid === activeStationCard.uuid
+  const cardIndexLookup = useMemo(() => {
+    const indexMap = new Map<string, number>();
+    playerCards.forEach((card, index) => {
+      if (card.type === "station") {
+        indexMap.set(card.station.uuid, index);
+      }
+    });
+    return indexMap;
+  }, [playerCards]);
+
+  const stackSource = useMemo(() => {
+    // Only show stations from current session (recentStations)
+    // Not all the loaded stations from the country
+    if (recentStations.length > 0) {
+      const seen = new Set<string>();
+      const uniqueStack: Station[] = [];
+      for (const station of recentStations) {
+        if (station && !seen.has(station.uuid)) {
+          seen.add(station.uuid);
+          uniqueStack.push(station);
+        }
+      }
+      return uniqueStack;
+    }
+    return [];
+  }, [recentStations]);
+
+  const totalStations = stackSource.length;
+  const fallbackStation = stackSource[0] ?? stationCards[0]?.station ?? null;
+  const activeCard = playerCards[activeCardIndex];
+  const activeStation =
+    activeCard && activeCard.type === "station"
+      ? activeCard.station
+      : nowPlaying ?? fallbackStation;
+
+  const trailStations = stackSource;
+
+  const activeTrailIndex = activeStation
+    ? trailStations.findIndex((station) => station.uuid === activeStation.uuid)
+    : -1;
+
+  const activeStationIsCurrent = activeStation
+    ? nowPlaying?.uuid === activeStation.uuid
     : false;
-  const activeStationIsFavorite = activeStationCard
-    ? favoriteStationIds.has(activeStationCard.uuid)
-    : false;
+
+  const activeCountryMeta = activeStation
+    ? countryMap.get(activeStation.country) ?? null
+    : null;
+
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Detect newly added stations from session play history
+  useEffect(() => {
+    // Only trigger animation for the most recent station added
+    if (recentStations.length > 0 && previousStationsRef.current.size > 0) {
+      const newestStation = recentStations[0]; // Most recent is first
+      
+      if (newestStation && !previousStationsRef.current.has(newestStation.uuid)) {
+        setNewlyAddedStations(new Set([newestStation.uuid]));
+        
+        // Remove animation class after animation completes
+        const timer = setTimeout(() => {
+          setNewlyAddedStations(new Set());
+        }, 1800); // Match animation duration
+        
+        return () => clearTimeout(timer);
+      }
+    }
+    
+    // Update ref with current session stations
+    previousStationsRef.current = new Set(recentStations.map(s => s.uuid));
+  }, [recentStations]);
 
   const worldCaption = isFetchingExplore
     ? "Loading global mixtape..."
     : `${globalStationCount.toLocaleString()} stations across the atlas`;
-  const localCaption = `${localStationCount.toLocaleString()} stations from ${selectedCountry ?? "this country"}`;
+  const localCaption = `${localStationCount.toLocaleString()} stations from ${
+    selectedCountry ?? "this country"
+  }`;
+
+  const initialsFromName = (name: string) => {
+    const cleaned = name.trim();
+    if (!cleaned) return "??";
+    const words = cleaned.split(/\s+/).filter(Boolean);
+    if (words.length === 1) return (words[0] ?? "").slice(0, 2).toUpperCase();
+    const firstInitial = words[0]?.[0] ?? "";
+    const secondInitial = words[1]?.[0] ?? "";
+    const initials = `${firstInitial}${secondInitial}`.toUpperCase();
+    return initials || (words[0] ?? "").slice(0, 2).toUpperCase();
+  };
+
+  const handleSelectStation = useCallback(
+    (station: Station) => {
+      const targetIndex = cardIndexLookup.get(station.uuid);
+      if (typeof targetIndex === "number") {
+        onCardJump(targetIndex);
+      }
+      onStartStation(station, {
+        autoPlay: Boolean(station.streamUrl ?? station.url),
+        preserveQueue: true,
+      });
+    },
+    [cardIndexLookup, onCardJump, onStartStation]
+  );
+
+  const renderTrailCard = (station: Station, index: number) => {
+    const cardKey = `${station.uuid}-${index}`;
+    const stationCountryMeta = countryMap.get(station.country) ?? null;
+    const countryLabel = stationCountryMeta?.name ?? station.country;
+    const isNowPlaying = nowPlaying?.uuid === station.uuid;
+    const stationInitials = initialsFromName(station.name);
+    const isNewlyAdded = newlyAddedStations.has(station.uuid);
+    
+    // Get flag color for country
+    const flagColorMap: Record<string, string> = {
+      IN: "rgba(255, 153, 51, 0.8)",    // India - Orange
+      US: "rgba(178, 34, 52, 0.8)",     // USA - Red
+      GB: "rgba(1, 33, 105, 0.8)",      // UK - Blue  
+      FR: "rgba(0, 85, 164, 0.8)",      // France - Blue
+      DE: "rgba(0, 0, 0, 0.8)",          // Germany - Black
+      BR: "rgba(0, 156, 59, 0.8)",      // Brazil - Green
+      JP: "rgba(188, 0, 45, 0.8)",      // Japan - Red
+      AU: "rgba(0, 0, 139, 0.8)",       // Australia - Blue
+      CA: "rgba(255, 0, 0, 0.8)",       // Canada - Red
+      MX: "rgba(0, 104, 71, 0.8)",      // Mexico - Green
+    };
+    const flagColor = flagColorMap[stationCountryMeta?.iso_3166_1 ?? ""] ?? "rgba(148, 163, 184, 0.6)";
+
+    return (
+      <div
+        key={cardKey}
+        ref={(node) => {
+          cardRefs.current[station.uuid] = node;
+        }}
+        className={`travel-stack__card ${isNowPlaying ? "travel-stack__card--playing" : ""} ${isNewlyAdded ? "travel-stack__card--stamping" : ""}`}
+        style={{
+          '--card-index': index,
+          '--flag-color': flagColor,
+        } as React.CSSProperties}
+        onClick={() => handleSelectStation(station)}
+        role="button"
+        tabIndex={0}
+        aria-label={`Play ${station.name} from ${countryLabel}`}
+      >
+        {/* Card number badge - positioned on top edge like folder tab */}
+        <div className="travel-stack__tab-badge">#{index + 1}</div>
+        
+        {/* Card stack indicator with flag color */}
+        <div className="travel-stack__edge" style={{ background: flagColor }} />
+        
+        {/* Stamp indicator */}
+        <div className={`travel-stack__stamp ${isNewlyAdded ? "travel-stack__stamp--stamping" : ""}`} aria-label="Stamped">
+          <PassportStampIcon size={28} id={`stamp-${index}`} />
+        </div>
+        
+        {/* Card content - revealed on hover */}
+        <div className="travel-stack__content">
+          {/* Top: Flag right-aligned */}
+          <div className="travel-stack__top-row">
+            {stationCountryMeta?.iso_3166_1 && (
+              <CountryFlag
+                iso={stationCountryMeta.iso_3166_1}
+                size={64}
+                title={countryLabel}
+              />
+            )}
+          </div>
+          
+          {/* Center: Large station title */}
+          <div className="travel-stack__title-section">
+            <h3 className="travel-stack__station-name">
+              {station.name}
+            </h3>
+          </div>
+          
+          {/* Bottom row: Disc left, Metadata right */}
+          <div className="travel-stack__bottom-row">
+            <StationDisc
+              station={station}
+              isActive={false}
+              isNowPlaying={isNowPlaying}
+              initials={stationInitials}
+            />
+            <div className="travel-stack__metadata">
+              <Text size="sm" fw={500} c="rgba(226,232,240,0.85)" lineClamp={1} style={{ maxWidth: '100%' }}>
+                {countryLabel}
+              </Text>
+              <Text size="xs" c="rgba(148,163,184,0.75)" lineClamp={1}>
+                {station.language || 'Unknown'}
+              </Text>
+              <Text size="xs" c="rgba(199,158,73,0.8)" fw={500} lineClamp={1}>
+                {station.codec?.toUpperCase() || 'MP3'} · {station.bitrate && station.bitrate > 0 ? `${station.bitrate} kbps` : '128 kbps'}
+              </Text>
+            </div>
+          </div>
+          
+          {isNowPlaying && (
+            <div className="travel-stack__playing-badge">
+              <IconHeadphones size={12} />
+              <span>Now Playing</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <section id="player" className="mt-8">
       <div className="player-stack-shell">
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-b from-[#0a1426] via-[#0a1426] to-[#0a1426]/95 pb-4 backdrop-blur-sm">
-          <div className="min-w-0 flex-1">
-            <Title order={2} style={{ fontSize: "1.6rem", fontWeight: 600 }}>
-              Radio passport player
-            </Title>
-            <Text size="sm" c="rgba(226,232,240,0.68)">
-              Swipe through recently stamped stations and queue your next destination.
-            </Text>
-          </div>
-          <Badge
-            radius="xl"
-            size="md"
-            leftSection={<IconHeadphones size={16} />}
-            style={{
-              background: "rgba(199,158,73,0.2)",
-              border: "1px solid rgba(199,158,73,0.45)",
-              color: "#fefae0",
-            }}
-          >
-            {Math.max(totalCards - 1, 0).toLocaleString()} stations in stack
-          </Badge>
-        </div>
-
-        <div className="player-card-stack mt-6" {...cardSwipeHandlers}>
-          <AnimatePresence initial={false} custom={cardDirection} mode="wait">
-            <motion.div
-              key={
-                activeCard.type === "station" ? activeCard.station.uuid : "mission-card"
-              }
-              custom={cardDirection}
-              variants={PLAYER_CARD_VARIANTS}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={PLAYER_CARD_TRANSITION}
-              className="player-card-layer"
-            >
-              {activeCard.type === "mission" ? (
-                <div className="mission-card">
-                  <Badge
-                    radius="xl"
-                    size="sm"
-                    leftSection={<IconCompass size={14} />}
-                    style={{
-                      background: "rgba(209,73,91,0.16)",
-                      border: "1px solid rgba(209,73,91,0.35)",
-                      color: "#f4ede0",
-                    }}
-                  >
-                    Sound passport
-                  </Badge>
-                  <Title
-                    order={3}
-                    style={{ fontSize: "1.85rem", fontWeight: 700, color: "#fefae0" }}
-                  >
-                    Where to next?
-                  </Title>
-                  <Text size="sm" c="rgba(226,232,240,0.7)">
-                    Discover cultures through sound. Stamp your passport by exploring the
-                    world or diving into local airwaves.
-                  </Text>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 mt-4">
-                    <Button
-                      data-testid="mission-explore-world"
-                      radius="xl"
-                      size="md"
-                      onClick={() => onMissionExploreWorld()}
-                      className="touch-manipulation min-h-[44px]"
-                      style={{
-                        background:
-                          "linear-gradient(120deg, rgba(199,158,73,0.92) 0%, rgba(148,113,51,0.92) 100%)",
-                        color: "#0f172a",
-                        fontWeight: 700,
-                        border: "1px solid rgba(254,250,226,0.6)",
-                      }}
-                    >
-                      Explore the World
-                    </Button>
-                    <Button
-                      data-testid="mission-stay-local"
-                      radius="xl"
-                      size="md"
-                      variant="outline"
-                      onClick={() => onMissionStayLocal()}
-                      className="touch-manipulation min-h-[44px]"
-                      style={{
-                        border: "1px solid rgba(148,163,184,0.35)",
-                        color: "rgba(248,250,252,0.95)",
-                        background: "rgba(10,20,38,0.4)",
-                      }}
-                    >
-                      Stay Local
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="player-card">
-                  <div className="player-card__header">
-                    <div className="player-card__avatar">
-                      {activeStationCard?.favicon ? (
-                        <Avatar
-                          src={activeStationCard.favicon}
-                          size={76}
-                          radius="xl"
-                          style={{ border: "1px solid rgba(255,255,255,0.16)" }}
-                        />
-                      ) : (
-                        <ThemeIcon
-                          size={76}
-                          radius="xl"
-                          style={{
-                            background: "rgba(15,23,42,0.75)",
-                            border: "1px solid rgba(148,163,184,0.25)",
-                          }}
-                        >
-                          <IconBroadcast size={32} />
-                        </ThemeIcon>
-                      )}
-                    </div>
-                    <div className="player-card__title-block">
-                      <div className="player-card__title-row">
-                        <Text fw={600} size="lg" c="#f8fafc" lineClamp={1}>
-                          {activeStationCard?.name}
-                        </Text>
-                        {activeStationCard?.bitrate ? (
-                          <Badge
-                            radius="xl"
-                            size="xs"
-                            leftSection={<IconWaveSine size={11} />}
-                            style={{
-                              background: "rgba(92,158,173,0.18)",
-                              border: "1px solid rgba(92,158,173,0.35)",
-                              color: "#fefae0",
-                            }}
-                          >
-                            {activeStationCard.bitrate} kbps
-                          </Badge>
-                        ) : activeStationCard?.codec ? (
-                          <Badge
-                            radius="xl"
-                            size="xs"
-                            leftSection={<IconWaveSine size={11} />}
-                            style={{
-                              background: "rgba(92,158,173,0.18)",
-                              border: "1px solid rgba(92,158,173,0.35)",
-                              color: "#fefae0",
-                            }}
-                          >
-                            {activeStationCard.codec}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="player-card__meta-row">
-                        {activeStationCard && (
-                          <>
-                            <CountryFlag
-                              iso={
-                                countryMap.get(activeStationCard.country)?.iso_3166_1
-                              }
-                              title={`${activeStationCard.country} flag`}
-                              size={28}
-                            />
-                            <span>{activeStationCard.country}</span>
-                            {activeStationCard.language && (
-                              <>
-                                <span aria-hidden="true">•</span>
-                                <span>{activeStationCard.language}</span>
-                              </>
-                            )}
-                            {activeStationCard.bitrate ? (
-                              <>
-                                <span aria-hidden="true">•</span>
-                                <span>{activeStationCard.bitrate} kbps</span>
-                              </>
-                            ) : null}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {activeStationCard?.tags && (
-                    <Text
-                      size="sm"
-                      c="rgba(226,232,240,0.72)"
-                      className="player-card__tags"
-                    >
-                      {activeStationCard.tags}
-                    </Text>
-                  )}
-                  <div className="player-card__badges">
-                    {activeStationCard?.codec && (
-                      <Badge
-                        radius="xl"
-                        size="xs"
-                        leftSection={<IconDisc size={11} />}
-                        style={{
-                          background: "rgba(37,99,235,0.12)",
-                          border: "1px solid rgba(37,99,235,0.28)",
-                          color: "rgba(191,219,254,0.85)",
-                        }}
-                      >
-                        {activeStationCard.codec}
-                      </Badge>
-                    )}
-                    {activeStationCard?.tags && (
-                      <Badge
-                        radius="xl"
-                        size="xs"
-                        leftSection={<IconMusic size={11} />}
-                        style={{
-                          background: "rgba(199,158,73,0.16)",
-                          border: "1px solid rgba(199,158,73,0.32)",
-                          color: "#fefae0",
-                        }}
-                      >
-                        Passport vibes
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="player-card__actions">
-                    <div className="flex items-center gap-2">
-                      {activeStationCard && (
-                        <Tooltip
-                          label={
-                            activeStationIsFavorite
-                              ? "Remove from travel log"
-                              : "Add to travel log"
-                          }
-                          withArrow
-                          color="gray"
-                        >
-                          <ActionIcon
-                            size="lg"
-                            radius="xl"
-                            onClick={() => onToggleFavorite(activeStationCard)}
-                            style={{
-                              background: activeStationIsFavorite
-                                ? "linear-gradient(120deg, rgba(209,73,91,0.9) 0%, rgba(148,34,56,0.9) 100%)"
-                                : "rgba(15,23,42,0.7)",
-                              border: activeStationIsFavorite
-                                ? "1px solid rgba(254,250,226,0.6)"
-                                : "1px solid rgba(148,163,184,0.25)",
-                              color: activeStationIsFavorite
-                                ? "#fef3f2"
-                                : "rgba(248,250,252,0.85)",
-                            }}
-                          >
-                            <IconHeart
-                              size={18}
-                              fill={activeStationIsFavorite ? "currentColor" : "none"}
-                            />
-                          </ActionIcon>
-                        </Tooltip>
-                      )}
-                      {activeStationCard && (
-                        <Tooltip label="Open stream" withArrow color="gray">
-                          <ActionIcon
-                            component="a"
-                            href={activeStationCard.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            size="lg"
-                            radius="xl"
-                            style={{
-                              background: "rgba(15,23,42,0.7)",
-                              border: "1px solid rgba(148,163,184,0.25)",
-                              color: "rgba(248,250,252,0.85)",
-                            }}
-                          >
-                            <IconExternalLink size={18} />
-                          </ActionIcon>
-                        </Tooltip>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {activeStationCard && (
-                        <Button
-                          radius="xl"
-                          size="sm"
-                          leftSection={
-                            activeStationIsCurrent && isPlaying ? (
-                              <IconPlayerPauseFilled size={16} />
-                            ) : (
-                              <IconPlayerPlayFilled size={16} />
-                            )
-                          }
-                          onClick={() => {
-                            if (!activeStationCard) return;
-                            if (activeStationIsCurrent) {
-                              if (isPlaying) {
-                                onPlayPause();
-                              } else {
-                                onStartStation(activeStationCard, { autoPlay: true });
-                              }
-                            } else {
-                              onStartStation(activeStationCard, { autoPlay: true });
-                            }
-                          }}
-                          className="touch-manipulation min-h-[44px]"
-                          style={{
-                            background:
-                              "linear-gradient(120deg, rgba(199,158,73,0.92) 0%, rgba(148,113,51,0.92) 100%)",
-                            color: "#0f172a",
-                            fontWeight: 600,
-                            border: "1px solid rgba(254,250,226,0.6)",
-                          }}
-                        >
-                          {activeStationIsCurrent
-                            ? isPlaying
-                              ? "Pause"
-                              : "Resume"
-                            : "Play now"}
-                        </Button>
-                      )}
-                      <Button
-                        radius="xl"
-                        variant="outline"
-                        size="sm"
-                        rightSection={<IconPlayerTrackNext size={16} />}
-                        onClick={onPlayNext}
-                        disabled={!hasStationsToCycle}
-                        className="touch-manipulation min-h-[44px]"
-                        style={{
-                          border: "1px solid rgba(148,163,184,0.35)",
-                          color: "rgba(248,250,252,0.85)",
-                          background: "rgba(10,20,38,0.4)",
-                          opacity: hasStationsToCycle ? 1 : 0.4,
-                        }}
-                      >
-                        Next destination
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        <div className="player-card-controls">
-          <div className="player-card-dots" role="tablist" aria-label="Player cards">
-            {playerCards.map((card, index) => {
-              const isActive = index === activeCardIndex;
-              const key =
-                card.type === "station"
-                  ? `card-${card.station.uuid}`
-                  : `mission-${index}`;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className={`player-card-dot ${
-                    isActive ? "player-card-dot--active" : ""
-                  }`}
-                  onClick={() => onCardJump(index)}
-                  aria-pressed={isActive}
-                  aria-label={
-                    card.type === "station"
-                      ? `Station ${card.station.name}`
-                      : "Mission card"
-                  }
-                  disabled={totalCards <= 1}
-                />
-              );
-            })}
-          </div>
-          {totalCards > 1 && (
-            <div className="flex items-center gap-3">
-              <Button
+        <div className="travel-log-shell">
+          <div className="travel-log__header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <img 
+                src="/icon.png" 
+                alt="Radio Passport" 
+                style={{ 
+                  width: '2.5rem', 
+                  height: '2.5rem', 
+                  filter: 'drop-shadow(0 2px 8px rgba(199, 158, 73, 0.3))'
+                }} 
+              />
+              <div>
+                <Title order={2} style={{ fontSize: "1.45rem", fontWeight: 600 }}>
+                  Travel log
+                </Title>
+                <Text size="sm" c="rgba(226,232,240,0.7)">
+                  Hover to preview • Click to play
+                </Text>
+              </div>
+            </div>
+            <div className="travel-log__stats">
+              <Badge
                 radius="xl"
-                variant="subtle"
-                size="sm"
-                leftSection={<IconPlayerTrackPrev size={16} />}
-                onClick={() => onCardChange(-1)}
+                size="md"
+                leftSection={<IconHeadphones size={16} />}
                 style={{
+                  background: "rgba(199,158,73,0.2)",
+                  border: "1px solid rgba(199,158,73,0.45)",
                   color: "#fefae0",
-                  background: "rgba(15,23,42,0.6)",
-                  border: "1px solid rgba(148,163,184,0.25)",
                 }}
               >
-                Previous
-              </Button>
-              <Button
-                radius="xl"
-                variant="subtle"
-                size="sm"
-                rightSection={<IconPlayerTrackNext size={16} />}
-                onClick={() => onCardChange(1)}
-                style={{
-                  color: "#fefae0",
-                  background: "rgba(15,23,42,0.6)",
-                  border: "1px solid rgba(148,163,184,0.25)",
-                }}
-              >
-                Next
-              </Button>
+                {totalStations.toLocaleString()} stamped
+              </Badge>
+              <Text size="xs" c="rgba(226,232,240,0.55)">
+                {selectedCountry ? localCaption : worldCaption}
+              </Text>
+            </div>
+          </div>
+
+          {totalStations === 0 ? (
+            <div className="travel-log__empty">
+              <Text size="sm" c="rgba(226,232,240,0.75)">
+                Your travel log is empty. Explore the atlas to build a trail of stations.
+              </Text>
+              <div className="travel-log__empty-actions">
+                <Button
+                  radius="xl"
+                  size="sm"
+                  onClick={onMissionExploreWorld}
+                  style={{
+                    background:
+                      "linear-gradient(120deg, rgba(199,158,73,0.92) 0%, rgba(148,113,51,0.92) 100%)",
+                    color: "#0f172a",
+                    fontWeight: 600,
+                    border: "1px solid rgba(254,250,226,0.6)",
+                  }}
+                >
+                  Explore the world
+                </Button>
+                <Button
+                  radius="xl"
+                  size="sm"
+                  variant="outline"
+                  onClick={onMissionStayLocal}
+                  style={{
+                    border: "1px solid rgba(148,163,184,0.35)",
+                    color: "rgba(248,250,252,0.85)",
+                    background: "rgba(10,20,38,0.4)",
+                  }}
+                >
+                  Stay local
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="travel-stack__container">
+              <div className="travel-stack__deck">
+                {trailStations.map((station, index) => renderTrailCard(station, index))}
+              </div>
             </div>
           )}
         </div>

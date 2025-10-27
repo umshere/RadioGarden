@@ -76,8 +76,9 @@ test.describe("UI Bug Fixes", () => {
     const countryButton = panel.locator(".quick-retune-country").first();
     await countryButton.click();
 
-    // Wait for navigation and scroll animation
-    await page.waitForTimeout(500);
+    await page.waitForURL(/country=/, { timeout: 10000 });
+    await page.waitForSelector("#station-grid .station-card", { timeout: 10000 });
+    await page.waitForSelector(".travel-trail__card", { timeout: 10000 });
 
     // Verify station grid is in viewport
     const stationGrid = page.locator("#station-grid");
@@ -112,68 +113,44 @@ test.describe("UI Bug Fixes", () => {
     await surpriseButton.click();
 
     // Wait for navigation and scroll
-    await page.waitForTimeout(500);
+    await page.waitForURL(/country=/, { timeout: 10000 });
+    await page.waitForSelector("#station-grid .station-card", { timeout: 10000 });
+    await page.waitForSelector(".travel-trail__card", { timeout: 10000 });
 
     // Verify station grid is visible
     const stationGrid = page.locator("#station-grid");
     await expect(stationGrid).toBeVisible();
   });
 
-  test.skip("Player navigation should update atlas context", async ({
-    page,
-  }) => {
-    await page.goto("/?country=United%20States");
+  test("Travel trail should capture successive stations", async ({ page }) => {
+    await page.goto("/?country=India");
 
     // Wait for stations to load
     await page.waitForSelector(".station-card");
 
-    // Play first station
-    const playButtons = page
-      .locator("button")
-      .filter({ hasText: "Play station" });
-    await playButtons.first().click();
+    const stationCards = page.locator(".station-card");
+    expect(await stationCards.count()).toBeGreaterThan(1);
 
-    // Wait for player to initialize
-    await page.waitForTimeout(1000);
+    const secondStationName = await stationCards
+      .nth(1)
+      .locator('[data-testid="station-name"]')
+      .innerText();
 
-    // Wait for footer player to be visible
-    const footer = page.locator("footer");
-    await expect(footer).toBeVisible({ timeout: 10000 });
-
-    // Or use the queue control as a fallback
-    const showQueue = page.getByRole("button", { name: /show queue/i });
-    if (await showQueue.count()) {
-      await showQueue.first().click();
-      await page.waitForTimeout(300);
-      const nextDest = page
-        .locator(".player-card-controls")
-        .getByRole("button", { name: /next destination/i });
-      await expect(nextDest).toBeVisible({ timeout: 5000 });
-      await nextDest.click();
-    } else {
-      // Ensure Next is available: toggle shuffle and wait
-      const shuffleButton = footer.getByRole("button", {
-        name: /shuffle mode/i,
-      });
-      if ((await shuffleButton.count()) > 0) {
-        await shuffleButton.first().click();
-        await page.waitForTimeout(200);
-      }
-      const nextButton = footer.getByRole("button", {
-        name: "Next",
-        exact: true,
-      });
-      await expect(nextButton).toBeVisible({ timeout: 5000 });
-      await nextButton.click();
+    // Play two different stations
+    for (let i = 0; i < 2; i++) {
+      await stationCards
+        .nth(i)
+        .getByRole("button", { name: /play station/i })
+        .click();
+      await page.waitForTimeout(500);
     }
 
-    // Wait for station change
-    await page.waitForTimeout(500);
+    const trailCards = page.locator(".travel-trail__card");
+    await expect(trailCards).toHaveCount(2, { timeout: 5000 });
 
-    // The URL should update with new country if station is from different country
-    // Or country parameter should remain if still in same country
-    const url = page.url();
-    expect(url).toContain("country=");
+    // Active card should reflect the most recently played station
+    const activeCard = page.locator(".travel-trail__card--active");
+    await expect(activeCard).toContainText(secondStationName);
   });
 
   test("Player should not overlap the last station", async ({ page }) => {

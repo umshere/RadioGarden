@@ -80,32 +80,31 @@ The development server is running at: **http://localhost:5174/**
 
 ---
 
-### ✅ Mission Card & Player Stack
+### ✅ Travel Trail & Player
 
-#### Mission Card (When no station playing)
+#### Travel Trail (Desktop & Mobile)
 
-- [ ] **Mission card appears** with "Where to next?" title
-- [ ] **"Explore the World"** button - Switches to world mode + auto-plays
-- [ ] **"Explore [Country]"** button - Shows selected country name dynamically
-- [ ] **"Explore Local"** button - Shows when no country selected
-- [ ] Buttons are touch-optimized (min-height: 44px)
+- [ ] Trail is always visible beneath the country overview (no collapsible queue)
+- [ ] Active card is larger, shows Resume/Next CTA buttons
+- [ ] Non-active cards show station name, index chip, and "Tap to tune" hint
+- [ ] Dotted journey line animates across the trail
+- [ ] Hovering/focusing a card previews it without auto-playing
+- [ ] Clicking a card tunes the station and keeps the trail centered on it
+- [ ] Favorite icon highlights when station is saved
+- [ ] Reliability badge (green/amber/red) appears when Radio Browser provides health info
+- [ ] Trending badge appears for stations with positive click trend
 
-#### Player Card Stack
+#### Travel Trail Overflow
 
-- [ ] **Swipe left** - Moves to next card
-- [ ] **Swipe right** - Moves to previous card
-- [ ] **Card dots** show current position
-- [ ] **Click dot** - Jumps to that card
-- [ ] **Station cards** display with avatar, metadata, and badges
-- [ ] **Favorite button** toggles with visual feedback (heart fills)
-- [ ] **Play button** shows correct state (Play/Pause/Resume)
-- [ ] **Next destination** button works when stations available
+- [ ] Trail scrolls horizontally when >4 stations are present
+- [ ] Active card auto-centers during playback changes
+- [ ] Keyboard arrow keys (left/right) move between cards when trail is focused
+- [ ] Cards without streams show "Visit homepage" footers instead of play prompts
 
-#### Mobile Player Stack (< 640px)
+#### Minimal Player Card (Small screens)
 
-- [ ] All buttons have min-height: 44px
-- [ ] Buttons stack vertically if needed
-- [ ] Cards are fully swipeable with touch
+- [ ] Resume/Next buttons remain accessible inside each active card
+- [ ] Trail cards retain 44px minimum tap targets and respond to touch scrolling
 
 ---
 
@@ -113,9 +112,9 @@ The development server is running at: **http://localhost:5174/**
 
 #### Station Selection
 
-- [ ] **Click station** - Starts playing immediately
-- [ ] **Loading indicator** appears briefly
-- [ ] **Station appears** in player stack
+- [ ] **Click station** - Starts playing immediately when stream is available
+- [ ] **Travel trail** adds the station (or reorders it to the front)
+- [ ] **Stations without streams** show “Visit station” cta instead of play
 - [ ] **Now playing** updates in player footer
 
 #### Station Grid Display
@@ -272,8 +271,8 @@ The development server is running at: **http://localhost:5174/**
 
 - [ ] "Start Your Journey" (not just "Start")
 - [ ] "Quick Retune" (clear purpose)
-- [ ] "Explore the World" (mission card)
-- [ ] "Explore [Country Name]" (dynamic, mission card)
+- [ ] Travel trail footer shows "Explore world" toggle
+- [ ] Travel trail footer shows "Stay local" toggle with current country context
 - [ ] "Play now" / "Pause" / "Resume" (contextual)
 
 #### Tooltips & Help Text

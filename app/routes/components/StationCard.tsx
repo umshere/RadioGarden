@@ -8,9 +8,12 @@ import {
   IconExternalLink,
   IconPlayerPlayFilled,
   IconHeart,
+  IconAlertTriangle,
+  IconShieldCheck,
 } from "@tabler/icons-react";
 import type { Station } from "~/types/radio";
 import { vibrate } from "~/utils/haptics";
+import { deriveStationHealth, getHealthBadgeStyle } from "~/utils/stationMeta";
 
 type StationCardProps = {
   station: Station;
@@ -31,6 +34,32 @@ export function StationCard({
   onToggleFavorite,
   stationRef,
 }: StationCardProps) {
+  const hasStream = Boolean(station.streamUrl);
+  const healthMeta = deriveStationHealth(station);
+  const reliabilityBadge = healthMeta
+    ? {
+        label: healthMeta.label,
+        status: healthMeta.status,
+      }
+    : null;
+  const languageLabel = station.language && station.languageCodes?.length
+    ? `${station.language} • ${station.languageCodes.join(", ")}`
+    : station.languageCodes?.length
+    ? station.languageCodes.join(", ")
+    : station.language ?? null;
+
+  const tagBadges = station.tagList?.slice(0, 3);
+
+  const cardStatusClass = [
+    station.healthStatus === "error" ? "station-card--error" : "",
+    station.healthStatus === "warning" ? "station-card--warn" : "",
+    !hasStream ? "station-card--no-stream" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const externalHref = getExternalHref(station);
+
   return (
     <motion.div
       ref={stationRef}
@@ -41,7 +70,7 @@ export function StationCard({
       <div
         className={`station-card ${isCurrent ? "station-card--active" : ""} ${
           isFavorite ? "station-card--favorite" : ""
-        }`}
+        } ${cardStatusClass}`}
       >
         <div className="flex items-start gap-4">
           {station.favicon ? (
@@ -65,7 +94,13 @@ export function StationCard({
           )}
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
-              <Text fw={600} size="sm" c="#f8fafc" lineClamp={1}>
+              <Text
+                fw={600}
+                size="sm"
+                c="#f8fafc"
+                lineClamp={1}
+                data-testid="station-name"
+              >
                 {station.name}
               </Text>
               {station.codec && (
@@ -83,13 +118,24 @@ export function StationCard({
                 </Badge>
               )}
             </div>
-            {station.tags && (
-              <Text size="xs" c="rgba(226,232,240,0.55)" lineClamp={2}>
-                {station.tags}
-              </Text>
+            {reliabilityBadge && (
+              <Badge
+                radius="xl"
+                size="xs"
+                leftSection={
+                  reliabilityBadge.status === "good" ? (
+                    <IconShieldCheck size={11} />
+                  ) : (
+                    <IconAlertTriangle size={11} />
+                  )
+                }
+                style={getHealthBadgeStyle(reliabilityBadge.status)}
+              >
+                {reliabilityBadge.label}
+              </Badge>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              {station.language && (
+              {languageLabel && (
                 <Badge
                   radius="xl"
                   size="xs"
@@ -100,7 +146,7 @@ export function StationCard({
                     color: "rgba(191,219,254,0.85)",
                   }}
                 >
-                  {station.language}
+                  {languageLabel}
                 </Badge>
               )}
               {station.bitrate > 0 && (
@@ -117,6 +163,20 @@ export function StationCard({
                   {station.bitrate} kbps
                 </Badge>
               )}
+              {tagBadges?.map((tag) => (
+                <Badge
+                  key={tag}
+                  radius="xl"
+                  size="xs"
+                  style={{
+                    background: "rgba(148,163,184,0.12)",
+                    border: "1px solid rgba(148,163,184,0.28)",
+                    color: "rgba(226,232,240,0.75)",
+                  }}
+                >
+                  {tag}
+                </Badge>
+              ))}
             </div>
           </div>
         </div>
@@ -124,23 +184,44 @@ export function StationCard({
         <div className="divider-soft" />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Tooltip label="Open stream in new tab" withArrow color="gray">
-            <ActionIcon
-              component="a"
-              href={station.url}
-              target="_blank"
-              rel="noreferrer"
-              size="lg"
-              radius="xl"
-              style={{
-                background: "rgba(17,27,47,0.9)",
-                border: "1px solid rgba(148,163,184,0.25)",
-                color: "rgba(226,232,240,0.75)",
-              }}
-              aria-label={`Open ${station.name} stream in a new tab`}
-            >
-              <IconExternalLink size={18} />
-            </ActionIcon>
+          <Tooltip
+            label={station.homepage ? "Open station homepage" : "Open stream in new tab"}
+            withArrow
+            color="gray"
+          >
+            {externalHref ? (
+              <ActionIcon
+                component="a"
+                href={externalHref}
+                target="_blank"
+                rel="noreferrer"
+                size="lg"
+                radius="xl"
+                style={{
+                  background: "rgba(17,27,47,0.9)",
+                  border: "1px solid rgba(148,163,184,0.25)",
+                  color: "rgba(226,232,240,0.75)",
+                }}
+                aria-label={`Open ${station.name} stream in a new tab`}
+              >
+                <IconExternalLink size={18} />
+              </ActionIcon>
+            ) : (
+              <ActionIcon
+                size="lg"
+                radius="xl"
+                disabled
+                style={{
+                  background: "rgba(17,27,47,0.6)",
+                  border: "1px solid rgba(148,163,184,0.15)",
+                  color: "rgba(226,232,240,0.45)",
+                  cursor: "not-allowed",
+                }}
+                aria-label={`${station.name} stream unavailable`}
+              >
+                <IconExternalLink size={18} />
+              </ActionIcon>
+            )}
           </Tooltip>
           {onToggleFavorite && (
             <Tooltip label={isFavorite ? "Remove from favorites" : "Add to favorites"} withArrow color="gray">
@@ -167,28 +248,59 @@ export function StationCard({
               </ActionIcon>
             </Tooltip>
           )}
-          <Tooltip label={`Play ${station.name}`} withArrow>
-            <Button
-              radius="xl"
-              size="sm"
-              leftSection={<IconPlayerPlayFilled size={16} />}
-              onClick={() => {
-                vibrate(12);
-                onPlay(station);
-              }}
-              style={{
-                background:
-                  "linear-gradient(120deg, rgba(199,158,73,0.9) 0%, rgba(148,113,51,0.9) 100%)",
-                color: "#0f172a",
-                fontWeight: 600,
-              }}
-              aria-label={`Play ${station.name}`}
-            >
-              Play station
-            </Button>
-          </Tooltip>
+          {hasStream ? (
+            <Tooltip label={`Play ${station.name}`} withArrow>
+              <Button
+                radius="xl"
+                size="sm"
+                leftSection={<IconPlayerPlayFilled size={16} />}
+                onClick={() => {
+                  vibrate(12);
+                  onPlay(station);
+                }}
+                style={{
+                  background:
+                    "linear-gradient(120deg, rgba(199,158,73,0.9) 0%, rgba(148,113,51,0.9) 100%)",
+                  color: "#0f172a",
+                  fontWeight: 600,
+                }}
+                aria-label={`Play ${station.name}`}
+              >
+                Play station
+              </Button>
+            </Tooltip>
+          ) : (
+            <Tooltip label="Stream unavailable. Visit station website." withArrow>
+              <Button
+                radius="xl"
+                size="sm"
+                component="a"
+                href={station.homepage || externalHref || "#"}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  background: "rgba(17,27,47,0.9)",
+                  border: "1px solid rgba(148,163,184,0.3)",
+                  color: "rgba(226,232,240,0.85)",
+                  fontWeight: 600,
+                }}
+                aria-label={`Visit ${station.name} homepage`}
+              >
+                Visit station
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </div>
     </motion.div>
   );
 }
+
+function getExternalHref(station: Station): string | undefined {
+  const candidate = station.streamUrl || station.url;
+  if (candidate) return candidate;
+  if (station.homepage) return station.homepage;
+  return undefined;
+}
+
+
