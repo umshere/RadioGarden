@@ -435,7 +435,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const descriptor: WorldMoodDescriptor = {
     ...selected,
-    stations: selected.stations.map((station) => ({ ...station })),
+    stations: selected.stations,
     generatedAt: new Date().toISOString(),
   };
 
