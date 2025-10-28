@@ -1,4 +1,4 @@
-import { useRef, useSyncExternalStore } from "react";
+import { useDebugValue, useRef, useSyncExternalStore } from "react";
 
 type SetState<T> = (
   partial: Partial<T> | T | ((state: T) => Partial<T> | T),
@@ -15,6 +15,7 @@ type StoreApi<T> = {
   setState: SetState<T>;
   getState: GetState<T>;
   subscribe: Subscribe<T>;
+  destroy: () => void;
 };
 
 type StateCreator<T> = (
@@ -33,6 +34,7 @@ type UseBoundStore<T> = {
   getState: GetState<T>;
   setState: SetState<T>;
   subscribe: Subscribe<T>;
+  destroy: () => void;
 };
 
 type PersistStorage = {
@@ -48,6 +50,14 @@ type PersistOptions<T> = {
   partialize?: (state: T) => unknown;
 };
 
+function identitySelector<T>(value: T) {
+  return value;
+}
+
+function defaultEqualityFn<T>(a: T, b: T) {
+  return Object.is(a, b);
+}
+
 export function createStore<T>(initializer: StateCreator<T>): UseBoundStore<T> {
   let state: T;
   const listeners = new Set<StateListener>();
@@ -61,7 +71,7 @@ export function createStore<T>(initializer: StateCreator<T>): UseBoundStore<T> {
 
     const nextState = replace
       ? (partialState as T)
-      : { ...currentState, ...(partialState as Partial<T>) };
+      : { ...(currentState as object), ...(partialState as Partial<T>) } as T;
 
     if (Object.is(nextState, currentState)) {
       return;
@@ -78,33 +88,67 @@ export function createStore<T>(initializer: StateCreator<T>): UseBoundStore<T> {
     };
   };
 
+  const destroy = () => {
+    listeners.clear();
+  };
+
   const api: StoreApi<T> = {
     setState,
     getState,
     subscribe,
+    destroy,
   };
 
   state = initializer(setState, getState, api);
 
   function useStore(): T;
   function useStore<U>(selector: Selector<T, U>, equalityFn?: EqualityChecker<U>): U;
-  function useStore<U>(selector?: Selector<T, U>, equalityFn: EqualityChecker<U> = Object.is): T | U {
-    const sliceSelector = selector ?? ((value: T) => value as unknown as U);
+  function useStore<U>(selector?: Selector<T, U>, equalityFn: EqualityChecker<U> = defaultEqualityFn): T | U {
+    const selectorRef = useRef(selector ?? (identitySelector as Selector<T, U>));
+    const equalityRef = useRef(equalityFn ?? (defaultEqualityFn as EqualityChecker<U>));
+    const lastSliceRef = useRef<T | U>();
+    const hasSliceRef = useRef(false);
 
-    const snapshot = useSyncExternalStore(subscribe, () => sliceSelector(getState()), () => sliceSelector(getState()));
+    const selectorToUse = selector ?? (identitySelector as Selector<T, U>);
+    const equalityToUse = equalityFn ?? (defaultEqualityFn as EqualityChecker<U>);
 
-    const stored = useRef(snapshot);
-
-    if (!equalityFn(stored.current as U, snapshot as U)) {
-      stored.current = snapshot;
+    if (selectorRef.current !== selectorToUse) {
+      selectorRef.current = selectorToUse;
+      hasSliceRef.current = false;
     }
 
-    return stored.current as T | U;
+    if (equalityRef.current !== equalityToUse) {
+      equalityRef.current = equalityToUse;
+    }
+
+    const getSelectedState = () => {
+      const currentState = getState();
+      return selectorRef.current(currentState);
+    };
+
+    const selectedState = useSyncExternalStore(
+      subscribe,
+      getSelectedState,
+      getSelectedState
+    );
+
+    if (
+      !hasSliceRef.current ||
+      !equalityRef.current(lastSliceRef.current as U, selectedState as U)
+    ) {
+      hasSliceRef.current = true;
+      lastSliceRef.current = selectedState;
+    }
+
+    useDebugValue(lastSliceRef.current);
+
+    return lastSliceRef.current as T | U;
   }
 
   useStore.getState = getState;
   useStore.setState = setState;
   useStore.subscribe = subscribe;
+  useStore.destroy = destroy;
 
   return useStore as UseBoundStore<T>;
 }
@@ -131,7 +175,7 @@ export function persist<T extends object>(
     };
 
     const setWithPersist: SetState<T> = (partial, replace) => {
-      set(partial as Partial<T> | T | ((state: T) => Partial<T> | T), replace);
+      set(partial as any, replace);
       if (hasHydrated) {
         try {
           persistState(get());

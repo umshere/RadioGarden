@@ -10,6 +10,10 @@ class SceneManager {
     return this.descriptor;
   }
 
+  getDescriptor() {
+    return this.descriptor;
+  }
+
   setDescriptor(descriptor: WorldMoodDescriptor | null) {
     this.descriptor = descriptor;
     for (const listener of this.listeners) {
