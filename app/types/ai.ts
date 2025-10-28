@@ -1,38 +1,21 @@
-import type { Station } from "~/types/radio";
+export type DescriptorStatus = "idle" | "loading" | "success" | "error";
 
-export type PlaybackStrategy = "autoplay-first" | "respect-current" | "queue-only";
-
-export type DescriptorStation = Station & {
-  highlight: string;
+export type AiDescriptorState = {
+  status: DescriptorStatus;
+  mood: string | null;
+  transcript: string | null;
+  descriptor: string | null;
+  error: string | null;
+  updatedAt: number | null;
 };
 
-export type WorldMoodDescriptor = {
-  id: string;
-  slug: string;
-  label: string;
+export type VoiceCommandPayload = {
   mood: string;
-  summary: string;
-  narrative: string;
-  theme: {
-    palette: {
-      background: string;
-      accent: string;
-      glow: string;
-    };
-    camera: {
-      latitude: number;
-      longitude: number;
-      altitude: number;
-    };
-  };
-  playback: {
-    strategy: PlaybackStrategy;
-    crossfadeSeconds: number;
-  };
-  stations: DescriptorStation[];
-  generatedAt: string;
+  transcript: string;
 };
 
-export type AiRecommendationResponse = {
-  descriptor: WorldMoodDescriptor;
+export type AiOrchestratorResponse = {
+  descriptor: string;
+  mood?: string;
+  tags?: string[];
 };
