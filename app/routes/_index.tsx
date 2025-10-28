@@ -214,6 +214,8 @@ export default function Index() {
           error: null,
           updatedAt: Date.now(),
         });
+
+        await handleWorldMoodRefresh({ mood: response.mood ?? mood ?? undefined });
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           if (aiDescriptorAbortRef.current === abortController) {
@@ -248,7 +250,7 @@ export default function Index() {
         }
       }
     },
-    [mode]
+    [mode, handleWorldMoodRefresh]
   );
 
   const handleToggleFavorite = useCallback((station: Station) => {

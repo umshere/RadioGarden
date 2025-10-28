@@ -182,13 +182,14 @@ export function useEventHandlers({
   ]);
 
   const requestWorldDescriptor = useCallback(
-    async (stationId: string | null) => {
+    async (stationId: string | null, mood?: string) => {
       if (mode.isFetchingExplore) return false;
 
       setIsFetchingExplore(true);
       try {
         await loadWorldDescriptor({
           currentStationId: stationId,
+          mood,
           onStationsResolved: (stations) => {
             setExploreStations(stations);
           },
@@ -236,10 +237,13 @@ export function useEventHandlers({
     setActiveCardIndex,
   ]);
 
-  const handleWorldMoodRefresh = useCallback(() => {
-    if (mode.isFetchingExplore) return;
-    void requestWorldDescriptor(currentStationId);
-  }, [mode.isFetchingExplore, requestWorldDescriptor, currentStationId]);
+  const handleWorldMoodRefresh = useCallback(
+    async (options?: { mood?: string }) => {
+      if (mode.isFetchingExplore) return false;
+      return requestWorldDescriptor(currentStationId, options?.mood);
+    },
+    [mode.isFetchingExplore, requestWorldDescriptor, currentStationId]
+  );
 
   const handleMissionStayLocal = useCallback(() => {
     mode.setListeningMode("local");
