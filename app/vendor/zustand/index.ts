@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-type StateCreator<T> = (
+export type StateCreator<T> = (
   set: SetState<T>,
   get: GetState<T>,
   api: StoreApi<T>

@@ -21,13 +21,12 @@ export default defineConfig({
     }),
   ],
   resolve: {
-    alias: {
-      "~": path.resolve(__dirname, "app"),
-      "three/webgpu": "three",
-      "three/tsl": "three",
-      zustand: path.resolve(__dirname, "app/vendor/zustand/index.ts"),
-      "zustand/middleware": path.resolve(__dirname, "app/vendor/zustand/middleware.ts"),
-    },
+    alias: [
+      { find: "~", replacement: path.resolve(__dirname, "app") },
+      { find: "three/webgpu", replacement: "three" },
+      { find: "three/tsl", replacement: "three" },
+    ],
+    dedupe: ["react", "react-dom"],
   },
   ssr: {
     noExternal: ["@mantine/core", "@mantine/hooks"],

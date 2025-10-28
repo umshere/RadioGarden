@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 import type { Station } from "~/types/radio";
 
 type StartStationOptions = {
@@ -26,7 +26,39 @@ type PlayerState = {
   stop: () => void;
 };
 
-const storage = createJSONStorage(() => (typeof window !== "undefined" ? window.localStorage : undefined) as any);
+const playerStorage = {
+  getItem: (name: string) => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(name);
+  },
+  setItem: (name: string, value: string) => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(name, value);
+  },
+  removeItem: (name: string) => {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(name);
+  },
+} satisfies {
+  getItem: (name: string) => string | null;
+  setItem: (name: string, value: string) => void;
+  removeItem: (name: string) => void;
+};
+
+const mergePersistedState = (persisted: unknown, current: PlayerState): PlayerState => {
+  if (!persisted || typeof persisted !== "object") {
+    return current;
+  }
+
+  const next: Record<string, unknown> = { ...current };
+  for (const [key, value] of Object.entries(persisted as Record<string, unknown>)) {
+    if (typeof value === "function") continue;
+    if (!(key in next)) continue;
+    next[key] = value;
+  }
+
+  return next as PlayerState;
+};
 
 export const usePlayerStore = create<PlayerState>(
   persist(
@@ -125,7 +157,8 @@ export const usePlayerStore = create<PlayerState>(
     }),
     {
       name: "player-store",
-      storage,
+      storage: playerStorage,
+      merge: mergePersistedState,
       partialize: (state) => ({
         nowPlaying: state.nowPlaying,
         queue: state.queue,
