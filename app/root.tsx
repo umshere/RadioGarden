@@ -219,8 +219,9 @@ function GlobalAudioBridge() {
       return;
     }
 
-    if (audio.src !== streamUrl) {
-      audio.src = streamUrl;
+    const absoluteStreamUrl = new URL(streamUrl, window.location.origin).href;
+    if (audio.src !== absoluteStreamUrl) {
+      audio.src = absoluteStreamUrl;
     }
   }, [nowPlaying]);
 
