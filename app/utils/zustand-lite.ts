@@ -131,7 +131,7 @@ export function persist<T extends object>(
     };
 
     const setWithPersist: SetState<T> = (partial, replace) => {
-      set(partial as any, replace);
+      set(partial as Partial<T> | T | ((state: T) => Partial<T> | T), replace);
       if (hasHydrated) {
         try {
           persistState(get());
