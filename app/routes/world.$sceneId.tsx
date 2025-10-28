@@ -41,20 +41,26 @@ export default function WorldSceneRoute() {
             Local experience
           </Link>
           <nav className="flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-slate-300">
-            {scenes.map((scene) => (
-              <Link
-                key={scene.id}
-                to={scene.id === descriptor.id ? `#${scene.id}` : `/world/${scene.id}`}
-                className={
-                  scene.id === descriptor.id
-                    ? "rounded-full bg-white/10 px-3 py-1 text-slate-100"
-                    : "rounded-full px-3 py-1 text-slate-400 transition hover:bg-white/10 hover:text-slate-100"
-                }
-                prefetch="intent"
-              >
-                {scene.id === "atlas" ? "Atlas" : scene.id}
-              </Link>
-            ))}
+            {scenes.map((scene) =>
+              scene.id === descriptor.id ? (
+                <span
+                  key={scene.id}
+                  className="rounded-full bg-white/10 px-3 py-1 text-slate-100"
+                  aria-current="page"
+                >
+                  {scene.id === "atlas" ? "Atlas" : scene.id}
+                </span>
+              ) : (
+                <Link
+                  key={scene.id}
+                  to={`/world/${scene.id}`}
+                  className="rounded-full px-3 py-1 text-slate-400 transition hover:bg-white/10 hover:text-slate-100"
+                  prefetch="intent"
+                >
+                  {scene.id === "atlas" ? "Atlas" : scene.id}
+                </Link>
+              )
+            )}
           </nav>
         </div>
       </header>
