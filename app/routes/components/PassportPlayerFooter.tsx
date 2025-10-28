@@ -4,6 +4,7 @@ import { StationInfo } from "./player/StationInfo";
 import { PlaybackControls } from "./player/PlaybackControls";
 import { ModeBar } from "./player/ModeBar";
 import { Equalizer } from "./player/Equalizer";
+import type { AiDescriptorState, VoiceCommandPayload } from "~/types/ai";
 import type { Station, ListeningMode } from "~/types/radio";
 
 type PassportPlayerFooterProps = {
@@ -23,6 +24,8 @@ type PassportPlayerFooterProps = {
   onBackToWorld: () => void;
   onDismiss: () => void;
   onMinimize: () => void;
+  descriptorState: AiDescriptorState;
+  onVoiceDescriptor: (payload: VoiceCommandPayload) => void | Promise<void>;
 };
 
 export function PassportPlayerFooter({
@@ -42,6 +45,8 @@ export function PassportPlayerFooter({
   onBackToWorld,
   onDismiss,
   onMinimize,
+  descriptorState,
+  onVoiceDescriptor,
 }: PassportPlayerFooterProps) {
   if (!nowPlaying) return null;
 
@@ -85,6 +90,8 @@ export function PassportPlayerFooter({
               listeningMode={listeningMode}
               onQuickRetune={onQuickRetune}
               onBackToWorld={onBackToWorld}
+              descriptorState={descriptorState}
+              onVoiceDescriptor={onVoiceDescriptor}
             />
 
             {/* Compact Equalizer with Music Notes */}

@@ -7,13 +7,16 @@ import { IconSearch, IconMinimize } from "@tabler/icons-react";
 import { useSwipeable } from "react-swipeable";
 
 import PassportStampIcon from "~/components/PassportStampIcon";
+import { ClientOnly } from "~/components/ClientOnly";
 import { BRAND } from "~/constants/brand";
 import { getContinent } from "~/utils/geography";
 import { rbFetchJson } from "~/utils/radioBrowser";
 import { normalizeStations } from "~/utils/stations";
 import { rankStations, pickTopStation } from "~/utils/stationMeta";
 import { vibrate } from "~/utils/haptics";
+import type { AiDescriptorState, VoiceCommandPayload } from "~/types/ai";
 import type { Country, Station } from "~/types/radio";
+import { callAiOrchestrator } from "~/utils/aiOrchestrator";
 
 // Components
 import { HeroSection } from "./components/HeroSection";
@@ -99,6 +102,15 @@ export default function Index() {
   const [showNavigationIndicator, setShowNavigationIndicator] = useState(false);
   const [isMinimalPlayer, setIsMinimalPlayer] = useState(false);
   const stationRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [descriptorState, setDescriptorState] = useState<AiDescriptorState>({
+    status: "idle",
+    mood: null,
+    transcript: null,
+    descriptor: null,
+    error: null,
+    updatedAt: null,
+  });
+  const aiDescriptorAbortRef = useRef<AbortController | null>(null);
 
   // Derived data
   const topCountries = useMemo(
@@ -152,6 +164,7 @@ export default function Index() {
     countries,
     atlasNavigation,
   });
+  const { handleWorldMoodRefresh } = handlers;
 
   // Card navigation handlers
   const handleCardChange = useCallback((direction: 1 | -1) => {
@@ -165,6 +178,81 @@ export default function Index() {
     setCardDirection(index > activeCardIndex ? 1 : -1);
     setActiveCardIndex(index);
   }, [activeCardIndex, cards.playerCards.length]);
+
+  const handleVoiceDescriptorRequest = useCallback(
+    async ({ mood, transcript }: VoiceCommandPayload) => {
+      aiDescriptorAbortRef.current?.abort();
+
+      const abortController = new AbortController();
+      aiDescriptorAbortRef.current = abortController;
+
+      setDescriptorState((prev) => ({
+        status: "loading",
+        mood,
+        transcript,
+        descriptor: prev.descriptor,
+        error: null,
+        updatedAt: prev.updatedAt,
+      }));
+
+      mode.setListeningMode("world");
+
+      try {
+        const response = await callAiOrchestrator(
+          { mood, transcript },
+          { signal: abortController.signal }
+        );
+
+        if (aiDescriptorAbortRef.current !== abortController) {
+          return;
+        }
+
+        setDescriptorState({
+          status: "success",
+          mood: response.mood ?? mood,
+          transcript,
+          descriptor: response.descriptor,
+          error: null,
+          updatedAt: Date.now(),
+        });
+
+        await handleWorldMoodRefresh({ mood: response.mood ?? mood ?? undefined });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          if (aiDescriptorAbortRef.current === abortController) {
+            aiDescriptorAbortRef.current = null;
+            setDescriptorState((prev) => ({
+              ...prev,
+              status: prev.descriptor ? "success" : "idle",
+              error: null,
+            }));
+          }
+          return;
+        }
+
+        if (aiDescriptorAbortRef.current !== abortController) {
+          return;
+        }
+
+        setDescriptorState((prev) => ({
+          status: "error",
+          mood,
+          transcript,
+          descriptor: prev.descriptor,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to contact AI orchestrator",
+          updatedAt: Date.now(),
+        }));
+      } finally {
+        if (aiDescriptorAbortRef.current === abortController) {
+          aiDescriptorAbortRef.current = null;
+        }
+      }
+    },
+    [mode, handleWorldMoodRefresh]
+  );
 
   const handleToggleFavorite = useCallback((station: Station) => {
     vibrate(10);
@@ -187,11 +275,27 @@ export default function Index() {
       player.stop();
       setHasDismissedPlayer(true);
     }
-  }, [selectedCountry, player]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry, player.nowPlaying]);
 
   useEffect(() => {
     setShowNavigationIndicator(isRouteTransitioning);
   }, [isRouteTransitioning]);
+
+  useEffect(() => {
+    if (
+      mode.listeningMode === "world" &&
+      mode.exploreStations.length === 0 &&
+      !mode.isFetchingExplore
+    ) {
+      handleWorldMoodRefresh();
+    }
+  }, [
+    mode.listeningMode,
+    mode.exploreStations.length,
+    mode.isFetchingExplore,
+    handleWorldMoodRefresh,
+  ]);
 
   useEffect(() => {
     if (selectedCountry || player.nowPlaying || topCountries.length === 0 || hasDismissedPlayer) return;
@@ -208,7 +312,7 @@ export default function Index() {
         const continent = atlasNavigation.selectContinentForCountry(station.country) ?? "Asia";
         atlas.setSelectedContinent((prev) => prev ?? continent);
         setHasDismissedPlayer(false);
-        player.setNowPlaying(station);
+        player.startStation(station, { autoPlay: false, preserveQueue: true });
       } catch (error) {
         console.error("Failed to seed station", error);
       }
@@ -216,7 +320,8 @@ export default function Index() {
 
     loadStation();
     return () => { cancelled = true; };
-  }, [selectedCountry, player.nowPlaying, topCountries, hasDismissedPlayer, atlas, player, atlasNavigation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry, player.nowPlaying, topCountries.length, hasDismissedPlayer]);
 
   useEffect(() => {
     if (!player.nowPlaying) return;
@@ -234,6 +339,12 @@ export default function Index() {
     else if (activeCardIndex > cards.playerCards.length - 1) setActiveCardIndex(cards.playerCards.length - 1);
   }, [activeCardIndex, cards.playerCards.length]);
 
+  useEffect(() => {
+    return () => {
+      aiDescriptorAbortRef.current?.abort();
+    };
+  }, []);
+
   // Render
   const ariaHidden = isQuickRetuneOpen ? { "aria-hidden": true, style: { pointerEvents: "none" as const, userSelect: "none" as const } } : {};
 
@@ -247,7 +358,7 @@ export default function Index() {
     }}>
       <header className="fixed top-0 left-0 right-0 z-50 nav-shell backdrop-blur-lg" {...ariaHidden}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-8">
-          <Link to="/" className="flex items-center gap-3 text-sm font-semibold text-slate-100 transition-transform hover:scale-105" onClick={handlers.handleBackToWorldView}>
+          <Link to="/world" className="flex items-center gap-3 text-sm font-semibold text-slate-100 transition-transform hover:scale-105" onClick={handlers.handleBackToWorldView}>
             <PassportStampIcon size={48} animated={false} id="header" />
             <div className="hidden md:flex md:flex-col">
               <span className="hero-wordmark text-lg leading-tight">Radio Passport</span>
@@ -257,7 +368,8 @@ export default function Index() {
           
           <nav className="flex items-center gap-4">
             <div className="hidden sm:flex sm:items-center sm:gap-1">
-              <Link to="/" className="nav-link" prefetch="intent" preventScrollReset>Home</Link>
+              <Link to="/" className="nav-link" prefetch="intent" preventScrollReset>Local</Link>
+              <Link to="/world" className="nav-link" prefetch="intent" preventScrollReset>World</Link>
               <a href="#explore" className="nav-link" aria-current="page">Explore</a>
               <span className="nav-link opacity-40 cursor-not-allowed" aria-disabled="true" title="Coming soon">Favorites</span>
               <span className="nav-link opacity-40 cursor-not-allowed" aria-disabled="true" title="Coming soon">About</span>
@@ -277,19 +389,21 @@ export default function Index() {
               onToggle={handlers.handleToggleListeningMode}
               size="sm"
             />
-            {player.nowPlaying && (
-              <Tooltip label={isMinimalPlayer ? "Expand player" : "Minimize player"} position="bottom" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  onClick={() => setIsMinimalPlayer(!isMinimalPlayer)}
-                  style={{ color: "#94a3b8" }}
-                  aria-label={isMinimalPlayer ? "Expand player" : "Minimize player"}
-                >
-                  <IconMinimize size={16} />
-                </ActionIcon>
-              </Tooltip>
-            )}
+            <ClientOnly>
+              {player.nowPlaying && (
+                <Tooltip label={isMinimalPlayer ? "Expand player" : "Minimize player"} position="bottom" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    onClick={() => setIsMinimalPlayer(!isMinimalPlayer)}
+                    style={{ color: "#94a3b8" }}
+                    aria-label={isMinimalPlayer ? "Expand player" : "Minimize player"}
+                  >
+                    <IconMinimize size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </ClientOnly>
           </nav>
           
           <Badge radius="xl" size="md" className="hidden md:block" style={{
@@ -340,16 +454,31 @@ export default function Index() {
               stationCount={stations.length} onBack={handlers.handleBackToWorldView}
             />
 
-            <PlayerCardStack playerCards={cards.playerCards} activeCardIndex={activeCardIndex} cardDirection={cardDirection}
-              nowPlaying={player.nowPlaying} isPlaying={player.isPlaying} listeningMode={mode.listeningMode}
+            <PlayerCardStack
+              playerCards={cards.playerCards}
+              activeCardIndex={activeCardIndex}
+              cardDirection={cardDirection}
+              nowPlaying={player.nowPlaying}
+              isPlaying={player.isPlaying}
+              listeningMode={mode.listeningMode}
               stackStations={cards.deckStations}
               recentStations={recentStations}
-              favoriteStationIds={favoriteStationIds} countryMap={atlas.countryMap} hasStationsToCycle={cards.hasStationsToCycle}
-              isFetchingExplore={mode.isFetchingExplore} localStationCount={stations.length}
-              globalStationCount={mode.exploreStations.length || cards.deckStations.length} selectedCountry={selectedCountry}
-              onCardChange={handleCardChange} onCardJump={handleCardJump} onToggleFavorite={handleToggleFavorite}
-              onStartStation={handleStartStation} onPlayPause={player.playPause} onPlayNext={playNext}
-              onSetListeningMode={mode.setListeningMode} onMissionExploreWorld={handlers.handleMissionExploreWorld}
+              favoriteStationIds={favoriteStationIds}
+              countryMap={atlas.countryMap}
+              hasStationsToCycle={cards.hasStationsToCycle}
+              isFetchingExplore={mode.isFetchingExplore}
+              localStationCount={stations.length}
+              globalStationCount={mode.exploreStations.length || cards.deckStations.length}
+              selectedCountry={selectedCountry}
+              worldDescriptor={descriptorState}
+              onCardChange={handleCardChange}
+              onCardJump={handleCardJump}
+              onToggleFavorite={handleToggleFavorite}
+              onStartStation={handleStartStation}
+              onPlayPause={player.playPause}
+              onPlayNext={playNext}
+              onSetListeningMode={mode.setListeningMode}
+              onMissionExploreWorld={handlers.handleMissionExploreWorld}
               onMissionStayLocal={handlers.handleMissionStayLocal}
             />
 
@@ -420,7 +549,7 @@ export default function Index() {
             onPlayPause={player.playPause}
             onPlayNext={playNext}
             onPlayPrevious={playPrevious}
-            onShuffleToggle={() => player.setShuffleMode((prev) => !prev)}
+            onShuffleToggle={() => player.setShuffleMode((prev: boolean) => !prev)}
             onQuickRetune={() => setIsQuickRetuneOpen(true)}
             onBackToWorld={handlers.handleBackToWorldView}
             onMinimize={() => setIsMinimalPlayer(true)}
@@ -428,11 +557,12 @@ export default function Index() {
               player.stop();
               setHasDismissedPlayer(true);
             }}
+            descriptorState={descriptorState}
+            onVoiceDescriptor={handleVoiceDescriptorRequest}
           />
         )}
       </div>
 
-      <audio ref={player.audioRef} className="hidden" />
     </div>
   );
 }
