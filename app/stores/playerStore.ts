@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create } from "~/utils/zustand-lite";
 import type { DescriptorStation, PlaybackStrategy } from "~/types/ai";
 
 export type PlayerStoreState = {
