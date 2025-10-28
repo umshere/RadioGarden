@@ -1,43 +1,44 @@
-import type { AiOrchestratorResponse, VoiceCommandPayload } from "~/types/ai";
+import type { AiRecommendationResponse, RecommendRequestBody, VoiceCommandPayload } from "~/types/ai";
+import type { SceneDescriptor } from "~/scenes/types";
+
+export type AiOrchestratorResult = {
+  descriptor: SceneDescriptor;
+  summary: string;
+  mood?: string;
+};
 
 export async function callAiOrchestrator(
   payload: VoiceCommandPayload,
   options?: { signal?: AbortSignal }
-): Promise<AiOrchestratorResponse> {
-  try {
-    const response = await fetch("/api/ai/orchestrator", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      signal: options?.signal,
-    });
+): Promise<AiOrchestratorResult> {
+  const body: RecommendRequestBody = {
+    prompt: payload.transcript,
+    mood: payload.mood,
+    visual: payload.visual,
+  };
 
-    if (!response.ok) {
-      throw new Error(`AI orchestrator request failed: ${response.status} ${response.statusText}`);
-    }
+  const response = await fetch("/api/ai/recommend", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    signal: options?.signal,
+  });
 
-    const data = (await response.json()) as Partial<AiOrchestratorResponse>;
-    if (!data || typeof data.descriptor !== "string" || !data.descriptor.trim()) {
-      throw new Error("AI orchestrator returned an empty descriptor");
-    }
-
-    return {
-      descriptor: data.descriptor.trim(),
-      mood: data.mood?.trim() || undefined,
-      tags: Array.isArray(data.tags) ? data.tags : undefined,
-    };
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw error;
-    }
-
-    const message =
-      error instanceof Error && error.message
-        ? error.message
-        : "Unknown AI orchestrator error";
-
-    throw new Error(message);
+  if (!response.ok) {
+    throw new Error(`AI orchestrator request failed: ${response.status} ${response.statusText}`);
   }
+
+  const data = (await response.json()) as AiRecommendationResponse;
+  const descriptor = data.descriptor;
+  if (!descriptor || typeof descriptor.visual !== "string") {
+    throw new Error("AI orchestrator returned an invalid descriptor");
+  }
+
+  return {
+    descriptor,
+    summary: descriptor.reason ?? descriptor.mood ?? "World Mode mix",
+    mood: descriptor.mood ?? payload.mood,
+  };
 }

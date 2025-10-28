@@ -1,9 +1,10 @@
-import type { WorldMoodDescriptor } from "~/types/ai";
+import type { SceneDescriptor } from "~/scenes/types";
 
-type SceneListener = (descriptor: WorldMoodDescriptor | null) => void;
+type SceneListener = (descriptor: SceneDescriptor | null) => void;
 
 class SceneManager {
-  private descriptor: WorldMoodDescriptor | null = null;
+  private descriptor: SceneDescriptor | null = null;
+
   private listeners = new Set<SceneListener>();
 
   get currentDescriptor() {
@@ -14,7 +15,7 @@ class SceneManager {
     return this.descriptor;
   }
 
-  setDescriptor(descriptor: WorldMoodDescriptor | null) {
+  setDescriptor(descriptor: SceneDescriptor | null) {
     this.descriptor = descriptor;
     for (const listener of this.listeners) {
       try {

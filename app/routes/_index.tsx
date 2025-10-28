@@ -106,7 +106,8 @@ export default function Index() {
     status: "idle",
     mood: null,
     transcript: null,
-    descriptor: null,
+    descriptorSummary: null,
+    sceneDescriptor: null,
     error: null,
     updatedAt: null,
   });
@@ -190,7 +191,8 @@ export default function Index() {
         status: "loading",
         mood,
         transcript,
-        descriptor: prev.descriptor,
+        descriptorSummary: prev.descriptorSummary,
+        sceneDescriptor: prev.sceneDescriptor,
         error: null,
         updatedAt: prev.updatedAt,
       }));
@@ -211,7 +213,8 @@ export default function Index() {
           status: "success",
           mood: response.mood ?? mood,
           transcript,
-          descriptor: response.descriptor,
+          descriptorSummary: response.summary,
+          sceneDescriptor: response.descriptor,
           error: null,
           updatedAt: Date.now(),
         });
@@ -223,7 +226,7 @@ export default function Index() {
             aiDescriptorAbortRef.current = null;
             setDescriptorState((prev) => ({
               ...prev,
-              status: prev.descriptor ? "success" : "idle",
+              status: prev.sceneDescriptor ? "success" : "idle",
               error: null,
             }));
           }
@@ -238,7 +241,8 @@ export default function Index() {
           status: "error",
           mood,
           transcript,
-          descriptor: prev.descriptor,
+          descriptorSummary: prev.descriptorSummary,
+          sceneDescriptor: prev.sceneDescriptor,
           error:
             error instanceof Error
               ? error.message

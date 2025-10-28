@@ -1,1 +1,1 @@
-export { loader } from "~/api/ai/recommend";
+export { loader, action } from "~/api/ai/recommend";

@@ -1,7 +1,13 @@
-import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import type { AiRecommendationResponse, DescriptorStation, WorldMoodDescriptor } from "~/types/ai";
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
+import type { PlaybackStrategy, SceneDescriptor } from "~/scenes/types";
+import type { Station } from "~/types/radio";
+import { getProvider } from "~/services/ai/providers";
+import { rankStations } from "~/server/stations/ranking";
+import { annotateHealth } from "~/server/stations/health";
 
-const BASE_STATIONS: Record<string, DescriptorStation[]> = {
+const USE_MOCK = (process.env.USE_MOCK ?? "true").toLowerCase() === "true";
+
+const BASE_STATIONS: Record<string, Station[]> = {
   "aurora-trails": [
     {
       uuid: "aurora-horizon-1",
@@ -334,7 +340,36 @@ const BASE_STATIONS: Record<string, DescriptorStation[]> = {
   ],
 };
 
-const DESCRIPTORS: Array<Omit<WorldMoodDescriptor, "generatedAt">> = [
+type MockSceneDefinition = {
+  id: string;
+  slug: string;
+  label: string;
+  mood: string;
+  summary: string;
+  narrative: string;
+  keywords: string[];
+  visual: string;
+  animation?: string;
+  playback: {
+    strategy: string;
+    crossfadeSeconds: number;
+  };
+  stations: Station[];
+  reason: string;
+};
+
+type RecommendRequest = {
+  prompt?: string | null;
+  mood?: string | null;
+  visual?: string | null;
+  scene?: string | null;
+};
+
+type AiRecommendationResponse = {
+  descriptor: SceneDescriptor;
+};
+
+const DESCRIPTORS: MockSceneDefinition[] = [
   {
     id: "descriptor-aurora-trails",
     slug: "aurora-trails",
@@ -343,23 +378,23 @@ const DESCRIPTORS: Array<Omit<WorldMoodDescriptor, "generatedAt">> = [
     summary: "Arctic calm washed in shimmering synths and radio snow.",
     narrative:
       "Follow the aurora from Reykjavik to Helsinki with stations that glow like polar dawn, blending ambient pads, jazz, and midnight field recordings.",
-    theme: {
-      palette: {
-        background: "#04091f",
-        accent: "#6cc7ff",
-        glow: "#aee6ff",
-      },
-      camera: {
-        latitude: 64.1466,
-        longitude: -21.9426,
-        altitude: 1.8,
-      },
-    },
+    keywords: [
+      "aurora",
+      "arctic",
+      "nordic",
+      "ambient",
+      "iceland",
+      "snow",
+      "jazz",
+    ],
+    visual: "3d_globe",
+    animation: "slow-orbit",
     playback: {
       strategy: "autoplay-first",
       crossfadeSeconds: 12,
     },
     stations: BASE_STATIONS["aurora-trails"]!,
+    reason: "Polar ambient, Nordic jazz, and hi-bitrate aurora stations",
   },
   {
     id: "descriptor-desert-nocturne",
@@ -369,23 +404,15 @@ const DESCRIPTORS: Array<Omit<WorldMoodDescriptor, "generatedAt">> = [
     summary: "Warm desert winds with hypnotic midnight grooves.",
     narrative:
       "Glide between Marrakesh rooftops and Doha lounges as oud, electronic pulses, and lantern-lit percussion guide you through the hush of desert midnight.",
-    theme: {
-      palette: {
-        background: "#2b0f19",
-        accent: "#f7a35c",
-        glow: "#ffd7a3",
-      },
-      camera: {
-        latitude: 31.6295,
-        longitude: -7.9811,
-        altitude: 1.2,
-      },
-    },
+    keywords: ["desert", "midnight", "oud", "north africa", "gulf", "twilight"],
+    visual: "card_stack",
+    animation: "slow-pan",
     playback: {
       strategy: "respect-current",
       crossfadeSeconds: 8,
     },
     stations: BASE_STATIONS["desert-nocturne"]!,
+    reason: "Desert nocturne moods with oud, downtempo, and Gulf lounge cuts",
   },
   {
     id: "descriptor-harbor-dawn",
@@ -395,54 +422,166 @@ const DESCRIPTORS: Array<Omit<WorldMoodDescriptor, "generatedAt">> = [
     summary: "Coastal mornings steeped in jazz, city pop, and salt air.",
     narrative:
       "From Lisbon's tiled hills to Hong Kong's ferries, greet the sunrise with breezy rhythms, gulls in the distance, and coffeehouse warmth.",
-    theme: {
-      palette: {
-        background: "#041421",
-        accent: "#f5d98c",
-        glow: "#ffefc1",
-      },
-      camera: {
-        latitude: 38.7223,
-        longitude: -9.1393,
-        altitude: 1.5,
-      },
-    },
+    keywords: ["harbor", "sunrise", "bossa", "city pop", "coastal"],
+    visual: "3d_globe",
+    animation: "sunrise-spin",
     playback: {
       strategy: "autoplay-first",
       crossfadeSeconds: 6,
     },
     stations: BASE_STATIONS["harbor-dawn"]!,
+    reason: "Sunrise jazz, coastal city pop, and warm atlantic breezes",
   },
 ];
 
-function pickDescriptor(slug: string | null): Omit<WorldMoodDescriptor, "generatedAt"> {
-  const normalized = slug?.toLowerCase() ?? null;
-  const pool = normalized
-    ? DESCRIPTORS.filter((descriptor) =>
-        descriptor.slug === normalized || descriptor.mood.toLowerCase().includes(normalized),
-      )
-    : DESCRIPTORS;
-
-  const candidates = pool.length > 0 ? pool : DESCRIPTORS;
-  const randomIndex = Math.floor(Math.random() * candidates.length);
-  return candidates[randomIndex] ?? DESCRIPTORS[0]!;
+function mapPlaybackStrategy(value: string): PlaybackStrategy {
+  switch (value) {
+    case "autoplay-first":
+      return "autoplay_first";
+    case "queue-only":
+      return "queue_only";
+    case "preview-on-hover":
+      return "preview_on_hover";
+    case "respect-current":
+      return "queue_only";
+    default:
+      return "autoplay_first";
+  }
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const moodParam = url.searchParams.get("mood");
-  const selected = pickDescriptor(moodParam);
+function toSceneDescriptor(definition: MockSceneDefinition): SceneDescriptor {
+  const strategy = mapPlaybackStrategy(definition.playback.strategy);
+  const crossfadeMs = Math.max(0, Math.round(definition.playback.crossfadeSeconds * 1000));
 
-  const descriptor: WorldMoodDescriptor = {
-    ...selected,
-    stations: selected.stations,
-    generatedAt: new Date().toISOString(),
+  return {
+    visual: definition.visual,
+    mood: definition.mood,
+    animation: definition.animation,
+    play: {
+      strategy,
+      ...(crossfadeMs > 0 ? { crossfadeMs } : {}),
+    },
+    stations: definition.stations.map((station) => ({ ...station })),
+    reason: definition.reason || definition.summary,
   };
+}
 
+function selectMockScene(request: RecommendRequest): MockSceneDefinition {
+  const normalizedScene = request.scene?.toLowerCase().trim() ?? null;
+  if (normalizedScene) {
+    const match = DESCRIPTORS.find(
+      (descriptor) => descriptor.slug === normalizedScene || descriptor.visual === normalizedScene
+    );
+    if (match) {
+      return match;
+    }
+  }
+
+  const normalizedVisual = request.visual?.toLowerCase().trim() ?? null;
+  if (normalizedVisual) {
+    const match = DESCRIPTORS.find((descriptor) => descriptor.visual === normalizedVisual);
+    if (match) {
+      return match;
+    }
+  }
+
+  const prompt = `${request.prompt ?? ""} ${request.mood ?? ""}`.toLowerCase();
+  if (prompt.trim().length > 0) {
+    const scored = DESCRIPTORS.map((descriptor) => {
+      const score = descriptor.keywords.reduce((acc, keyword) => {
+        return prompt.includes(keyword.toLowerCase()) ? acc + 1 : acc;
+      }, 0);
+      return { descriptor, score } as const;
+    }).sort((a, b) => b.score - a.score);
+
+    if (scored[0] && scored[0].score > 0) {
+      return scored[0].descriptor;
+    }
+  }
+
+  return DESCRIPTORS[Math.floor(Math.random() * DESCRIPTORS.length)] ?? DESCRIPTORS[0]!;
+}
+
+async function resolveDescriptor(request: RecommendRequest): Promise<SceneDescriptor> {
+  if (USE_MOCK) {
+    return toSceneDescriptor(selectMockScene(request));
+  }
+
+  const provider = getProvider();
+  const prompt =
+    request.prompt ??
+    request.mood ??
+    request.scene ??
+    request.visual ??
+    "Curate a transportive radio journey with mood, animation, and stations.";
+  const descriptor = await provider.getSceneDescriptor(prompt);
+
+  return {
+    ...descriptor,
+    play: descriptor.play ?? { strategy: "autoplay_first" },
+  };
+}
+
+function applyPostProcessing(descriptor: SceneDescriptor, request: RecommendRequest): SceneDescriptor {
+  const ranked = rankStations(descriptor.stations, {
+    prompt: request.prompt ?? null,
+    mood: request.mood ?? null,
+  });
+  const withHealth = annotateHealth(ranked);
+
+  return {
+    ...descriptor,
+    stations: withHealth,
+  };
+}
+
+async function getRecommendation(request: RecommendRequest): Promise<SceneDescriptor> {
+  const descriptor = await resolveDescriptor(request);
+  return applyPostProcessing(descriptor, request);
+}
+
+function buildResponse(descriptor: SceneDescriptor) {
   const payload: AiRecommendationResponse = { descriptor };
   return json(payload, {
     headers: {
       "Cache-Control": "no-store",
     },
   });
+}
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const descriptor = await getRecommendation({
+    prompt: url.searchParams.get("prompt"),
+    mood: url.searchParams.get("mood"),
+    visual: url.searchParams.get("visual"),
+    scene: url.searchParams.get("scene"),
+  });
+
+  return buildResponse(descriptor);
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  let body: RecommendRequest = {};
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    try {
+      const parsed = (await request.json()) as Partial<RecommendRequest>;
+      body = parsed ?? {};
+    } catch (error) {
+      console.error("Failed to parse recommendation body", error);
+      body = {};
+    }
+  } else if (contentType.includes("application/x-www-form-urlencoded")) {
+    const formData = await request.formData();
+    body = {
+      prompt: formData.get("prompt")?.toString() ?? null,
+      mood: formData.get("mood")?.toString() ?? null,
+      visual: formData.get("visual")?.toString() ?? null,
+      scene: formData.get("scene")?.toString() ?? null,
+    };
+  }
+
+  const descriptor = await getRecommendation(body);
+  return buildResponse(descriptor);
 }

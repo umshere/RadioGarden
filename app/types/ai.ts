@@ -1,10 +1,13 @@
+import type { SceneDescriptor } from "~/scenes/types";
+
 export type DescriptorStatus = "idle" | "loading" | "success" | "error";
 
 export type AiDescriptorState = {
   status: DescriptorStatus;
   mood: string | null;
   transcript: string | null;
-  descriptor: string | null;
+  descriptorSummary: string | null;
+  sceneDescriptor: SceneDescriptor | null;
   error: string | null;
   updatedAt: number | null;
 };
@@ -12,10 +15,15 @@ export type AiDescriptorState = {
 export type VoiceCommandPayload = {
   mood: string;
   transcript: string;
+  visual?: string;
 };
 
-export type AiOrchestratorResponse = {
-  descriptor: string;
+export type AiRecommendationResponse = {
+  descriptor: SceneDescriptor;
+};
+
+export type RecommendRequestBody = {
+  prompt?: string;
   mood?: string;
-  tags?: string[];
+  visual?: string;
 };
