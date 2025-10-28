@@ -25,6 +25,8 @@ export default defineConfig({
       "~": path.resolve(__dirname, "app"),
       "three/webgpu": "three",
       "three/tsl": "three",
+      zustand: path.resolve(__dirname, "app/vendor/zustand/index.ts"),
+      "zustand/middleware": path.resolve(__dirname, "app/vendor/zustand/middleware.ts"),
     },
   },
   ssr: {
