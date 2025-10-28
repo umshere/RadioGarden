@@ -203,7 +203,7 @@ export function persist<T extends object>(
     }
 
     hasHydrated = true;
-    set(initialState as any, true);
+    set(initialState, true);
     if (storage) {
       try {
         persistState(get());
