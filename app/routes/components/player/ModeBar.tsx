@@ -254,7 +254,7 @@ export function ModeBar({
         </div>
 
         {isWorldMode && (
-          <div className="hidden min-w-[160px] max-w-[240px] flex-1 sm:block">
+          <div className="min-w-[160px] max-w-[240px] flex-1">
             <Text
               size="xs"
               c="rgba(244,237,224,0.55)"
