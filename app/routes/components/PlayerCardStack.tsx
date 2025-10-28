@@ -17,6 +17,7 @@ import {
 } from "@tabler/icons-react";
 import { CountryFlag } from "~/components/CountryFlag";
 import PassportStampIcon from "~/components/PassportStampIcon";
+import type { AiDescriptorState } from "~/types/ai";
 import type { Station, PlayerCard, ListeningMode } from "~/types/radio";
 import { deriveStationHealth, getHealthBadgeStyle } from "~/utils/stationMeta";
 
@@ -72,6 +73,7 @@ export type PlayerCardStackProps = {
   localStationCount: number;
   globalStationCount: number;
   selectedCountry: string | null;
+  worldDescriptor?: AiDescriptorState;
   onCardChange: (direction: 1 | -1) => void;
   onCardJump: (index: number) => void;
   onToggleFavorite: (station: Station) => void;
@@ -102,6 +104,7 @@ export function PlayerCardStack({
   localStationCount,
   globalStationCount,
   selectedCountry,
+  worldDescriptor,
   onCardChange,
   onCardJump,
   onToggleFavorite,
@@ -202,6 +205,40 @@ export function PlayerCardStack({
   const localCaption = `${localStationCount.toLocaleString()} stations from ${
     selectedCountry ?? "this country"
   }`;
+  const worldDescriptorMessage = useMemo(() => {
+    if (!worldDescriptor) {
+      return "Use the mic in world mode to set an AI-crafted vibe.";
+    }
+
+    if (worldDescriptor.status === "loading") {
+      if (worldDescriptor.mood) {
+        return `Tuning in a ${worldDescriptor.mood} vibe…`;
+      }
+
+      if (worldDescriptor.transcript) {
+        return `Heard “${worldDescriptor.transcript}”. Refreshing the vibe…`;
+      }
+
+      return "Refreshing AI vibe…";
+    }
+
+    if (worldDescriptor.status === "error") {
+      return worldDescriptor.error
+        ? `AI error: ${worldDescriptor.error}`
+        : "AI descriptor request failed.";
+    }
+
+    if (worldDescriptor.descriptor) {
+      const moodSuffix = worldDescriptor.mood ? ` (${worldDescriptor.mood})` : "";
+      return `AI vibe • ${worldDescriptor.descriptor}${moodSuffix}`;
+    }
+
+    return "Use the mic in world mode to set an AI-crafted vibe.";
+  }, [worldDescriptor]);
+  const worldDescriptorColor =
+    worldDescriptor?.status === "error"
+      ? "rgba(248,113,113,0.85)"
+      : "rgba(226,232,240,0.45)";
 
   const initialsFromName = (name: string) => {
     const cleaned = name.trim();
@@ -365,6 +402,15 @@ export function PlayerCardStack({
               <Text size="xs" c="rgba(226,232,240,0.55)">
                 {selectedCountry ? localCaption : worldCaption}
               </Text>
+              {!selectedCountry && (
+                <Text
+                  size="xs"
+                  c={worldDescriptorColor}
+                  style={{ marginTop: 4, maxWidth: "240px" }}
+                >
+                  {worldDescriptorMessage}
+                </Text>
+              )}
             </div>
           </div>
 
