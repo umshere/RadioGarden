@@ -122,12 +122,22 @@ export async function loadWorldDescriptor(options: LoadWorldDescriptorOptions = 
   const payload: unknown = await response.json();
   const descriptor = validateDescriptor(payload);
 
+  // Save previous descriptor to allow reverting in case of error
+  const previousDescriptor = sceneManager.getDescriptor?.() ?? null;
   sceneManager.setDescriptor(descriptor);
 
-  const playerState = usePlayerStore.getState();
-  playerState.setPlaybackStrategy(descriptor.playback.strategy);
-  playerState.setCrossfadeSeconds(descriptor.playback.crossfadeSeconds);
-  playerState.setQueue(descriptor.stations);
+  try {
+    const playerState = usePlayerStore.getState();
+    playerState.setPlaybackStrategy(descriptor.playback.strategy);
+    playerState.setCrossfadeSeconds(descriptor.playback.crossfadeSeconds);
+    playerState.setQueue(descriptor.stations);
+  } catch (error) {
+    // Revert sceneManager descriptor to previous state
+    if (previousDescriptor) {
+      sceneManager.setDescriptor(previousDescriptor);
+    }
+    throw error;
+  }
 
   onStationsResolved?.(descriptor.stations);
 
