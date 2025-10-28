@@ -14,6 +14,7 @@ import {
   IconTrendingUp,
   IconChevronLeft,
   IconChevronRight,
+  IconSparkles,
 } from "@tabler/icons-react";
 import { CountryFlag } from "~/components/CountryFlag";
 import PassportStampIcon from "~/components/PassportStampIcon";
@@ -86,6 +87,7 @@ export type PlayerCardStackProps = {
   onSetListeningMode: (mode: ListeningMode) => void;
   onMissionExploreWorld: () => void;
   onMissionStayLocal: () => void;
+  onRequestWorldMood?: () => void;
 };
 
 export function PlayerCardStack({
@@ -114,6 +116,7 @@ export function PlayerCardStack({
   onSetListeningMode,
   onMissionExploreWorld,
   onMissionStayLocal,
+  onRequestWorldMood,
 }: PlayerCardStackProps) {
   const [newlyAddedStations, setNewlyAddedStations] = useState<Set<string>>(new Set());
   const previousStationsRef = useRef<Set<string>>(new Set());
@@ -386,11 +389,11 @@ export function PlayerCardStack({
                 </Text>
               </div>
             </div>
-            <div className="travel-log__stats">
-              <Badge
-                radius="xl"
-                size="md"
-                leftSection={<IconHeadphones size={16} />}
+          <div className="travel-log__stats">
+            <Badge
+              radius="xl"
+              size="md"
+              leftSection={<IconHeadphones size={16} />}
                 style={{
                   background: "rgba(199,158,73,0.2)",
                   border: "1px solid rgba(199,158,73,0.45)",

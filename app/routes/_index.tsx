@@ -163,6 +163,7 @@ export default function Index() {
     countries,
     atlasNavigation,
   });
+  const { handleWorldMoodRefresh } = handlers;
 
   // Card navigation handlers
   const handleCardChange = useCallback((direction: 1 | -1) => {
@@ -276,6 +277,21 @@ export default function Index() {
   useEffect(() => {
     setShowNavigationIndicator(isRouteTransitioning);
   }, [isRouteTransitioning]);
+
+  useEffect(() => {
+    if (
+      mode.listeningMode === "world" &&
+      mode.exploreStations.length === 0 &&
+      !mode.isFetchingExplore
+    ) {
+      handleWorldMoodRefresh();
+    }
+  }, [
+    mode.listeningMode,
+    mode.exploreStations.length,
+    mode.isFetchingExplore,
+    handleWorldMoodRefresh,
+  ]);
 
   useEffect(() => {
     if (selectedCountry || player.nowPlaying || topCountries.length === 0 || hasDismissedPlayer) return;
