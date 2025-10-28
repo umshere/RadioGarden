@@ -7,6 +7,7 @@ import { IconSearch, IconMinimize } from "@tabler/icons-react";
 import { useSwipeable } from "react-swipeable";
 
 import PassportStampIcon from "~/components/PassportStampIcon";
+import { ClientOnly } from "~/components/ClientOnly";
 import { BRAND } from "~/constants/brand";
 import { getContinent } from "~/utils/geography";
 import { rbFetchJson } from "~/utils/radioBrowser";
@@ -274,7 +275,8 @@ export default function Index() {
       player.stop();
       setHasDismissedPlayer(true);
     }
-  }, [selectedCountry, player]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry, player.nowPlaying]);
 
   useEffect(() => {
     setShowNavigationIndicator(isRouteTransitioning);
@@ -318,7 +320,8 @@ export default function Index() {
 
     loadStation();
     return () => { cancelled = true; };
-  }, [selectedCountry, player.nowPlaying, topCountries, hasDismissedPlayer, atlas, player, atlasNavigation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry, player.nowPlaying, topCountries.length, hasDismissedPlayer]);
 
   useEffect(() => {
     if (!player.nowPlaying) return;
@@ -386,19 +389,21 @@ export default function Index() {
               onToggle={handlers.handleToggleListeningMode}
               size="sm"
             />
-            {player.nowPlaying && (
-              <Tooltip label={isMinimalPlayer ? "Expand player" : "Minimize player"} position="bottom" withArrow>
-                <ActionIcon
-                  size="sm"
-                  variant="subtle"
-                  onClick={() => setIsMinimalPlayer(!isMinimalPlayer)}
-                  style={{ color: "#94a3b8" }}
-                  aria-label={isMinimalPlayer ? "Expand player" : "Minimize player"}
-                >
-                  <IconMinimize size={16} />
-                </ActionIcon>
-              </Tooltip>
-            )}
+            <ClientOnly>
+              {player.nowPlaying && (
+                <Tooltip label={isMinimalPlayer ? "Expand player" : "Minimize player"} position="bottom" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    onClick={() => setIsMinimalPlayer(!isMinimalPlayer)}
+                    style={{ color: "#94a3b8" }}
+                    aria-label={isMinimalPlayer ? "Expand player" : "Minimize player"}
+                  >
+                    <IconMinimize size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </ClientOnly>
           </nav>
           
           <Badge radius="xl" size="md" className="hidden md:block" style={{

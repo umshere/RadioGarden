@@ -15,6 +15,12 @@ type SceneManagerProps = {
 
 type LoadedScene = ComponentType<any>;
 
+// Scene registry to handle dynamic imports properly
+const sceneLoaders: Record<string, () => Promise<{ default: LoadedScene }>> = {
+  AtlasScene: () => import("~/scenes/AtlasScene"),
+  // Add other scenes here as needed
+};
+
 export function SceneManager({ descriptor, fallback = null, empty = null }: SceneManagerProps) {
   const [SceneComponent, setSceneComponent] = useState<LoadedScene | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -32,9 +38,15 @@ export function SceneManager({ descriptor, fallback = null, empty = null }: Scen
     setError(null);
     setSceneComponent(null);
 
-    import(
-      /* @vite-ignore */ `~/scenes/${descriptor.component}`
-    )
+    const loader = sceneLoaders[descriptor.component];
+    
+    if (!loader) {
+      setError(new Error(`Scene "${descriptor.component}" not found in registry.`));
+      console.error(`Failed to load scene "${descriptor.component}"`, new Error("Scene not registered"));
+      return;
+    }
+
+    loader()
       .then((module) => {
         if (cancelled) return;
         const resolved = (module as { default?: LoadedScene }).default;

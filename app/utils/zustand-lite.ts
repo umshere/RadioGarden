@@ -104,45 +104,31 @@ export function createStore<T>(initializer: StateCreator<T>): UseBoundStore<T> {
   function useStore(): T;
   function useStore<U>(selector: Selector<T, U>, equalityFn?: EqualityChecker<U>): U;
   function useStore<U>(selector?: Selector<T, U>, equalityFn: EqualityChecker<U> = defaultEqualityFn): T | U {
-    const selectorRef = useRef(selector ?? (identitySelector as Selector<T, U>));
-    const equalityRef = useRef(equalityFn ?? (defaultEqualityFn as EqualityChecker<U>));
-    const lastSliceRef = useRef<T | U>();
-    const hasSliceRef = useRef(false);
-
     const selectorToUse = selector ?? (identitySelector as Selector<T, U>);
     const equalityToUse = equalityFn ?? (defaultEqualityFn as EqualityChecker<U>);
 
-    if (selectorRef.current !== selectorToUse) {
-      selectorRef.current = selectorToUse;
-      hasSliceRef.current = false;
-    }
-
-    if (equalityRef.current !== equalityToUse) {
-      equalityRef.current = equalityToUse;
-    }
-
-    const getSelectedState = () => {
+    // Create stable snapshot function that always uses current selector
+    const getSnapshot = useRef(() => {
       const currentState = getState();
-      return selectorRef.current(currentState);
+      return selectorToUse(currentState);
+    });
+
+    // Update the snapshot function when selector changes
+    // This must be before useSyncExternalStore
+    getSnapshot.current = () => {
+      const currentState = getState();
+      return selectorToUse(currentState);
     };
 
     const selectedState = useSyncExternalStore(
       subscribe,
-      getSelectedState,
-      getSelectedState
+      () => getSnapshot.current(),
+      () => getSnapshot.current()
     );
 
-    if (
-      !hasSliceRef.current ||
-      !equalityRef.current(lastSliceRef.current as U, selectedState as U)
-    ) {
-      hasSliceRef.current = true;
-      lastSliceRef.current = selectedState;
-    }
+    useDebugValue(selectedState);
 
-    useDebugValue(lastSliceRef.current);
-
-    return lastSliceRef.current as T | U;
+    return selectedState;
   }
 
   useStore.getState = getState;
@@ -192,27 +178,34 @@ export function persist<T extends object>(
         const storedValue = storage.getItem(options.name);
         if (storedValue) {
           const parsed = JSON.parse(storedValue) as unknown;
-          initialState = options.merge ? options.merge(parsed, initialState) : {
-            ...initialState,
-            ...(parsed as Record<string, unknown>),
-          };
+          if (options.merge) {
+            initialState = options.merge(parsed, initialState);
+          } else {
+            initialState = {
+              ...initialState,
+              ...(parsed as Record<string, unknown>),
+            };
+          }
         }
       } catch {
         // ignore parse errors
       }
     }
 
+    // Don't call set during initialization to avoid triggering listeners prematurely
+    // Just return the hydrated initial state
     hasHydrated = true;
-    set(initialState, true);
+
+    // Persist the initial state after hydration
     if (storage) {
       try {
-        persistState(get());
+        persistState(initialState);
       } catch {
         // ignore persistence errors
       }
     }
 
-    return get();
+    return initialState;
   };
 }
 

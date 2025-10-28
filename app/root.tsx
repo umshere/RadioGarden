@@ -182,7 +182,8 @@ function GlobalAudioBridge() {
     return () => {
       setAudioElement(null);
     };
-  }, [setAudioElement]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -200,7 +201,8 @@ function GlobalAudioBridge() {
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handlePause);
     };
-  }, [setIsPlaying]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -239,7 +241,8 @@ function GlobalAudioBridge() {
     } else {
       audio.pause();
     }
-  }, [isPlaying, nowPlaying, setIsPlaying]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, nowPlaying]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -259,7 +262,8 @@ function GlobalAudioBridge() {
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [isPlaying, setAudioLevel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying]);
 
   return <audio ref={audioRef} className="hidden" />;
 }

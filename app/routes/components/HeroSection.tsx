@@ -62,28 +62,38 @@ export function HeroSection({
   const [heroHovered, setHeroHovered] = useState(false);
   const [heroTaglineIndex, setHeroTaglineIndex] = useState(0);
   const [heroTickerIndex, setHeroTickerIndex] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Floating music notes animation data - random but stable
+  // Floating music notes animation data - deterministic seed based on index
   const floatingNotes = useMemo(
     () =>
-      Array.from({ length: 12 }).map((_, i) => ({
-        id: i,
-        delay: Math.random() * 8,
-        duration: 15 + Math.random() * 10,
-        startX: Math.random() * 100,
-        endX: Math.random() * 100,
-        startY: 110,
-        midY: 50 + Math.random() * 20,
-        endY: -20 - Math.random() * 10,
-        rotation: Math.random() * 360,
-        scale1: 0.4 + Math.random() * 0.3,
-        scale2: 0.8 + Math.random() * 0.4,
-        opacity: 0.2 + Math.random() * 0.15,
-        note: ['🎵', '🎶', '🎼', '🎹', '🎺', '🎸', '🎻', '🎤'][Math.floor(Math.random() * 8)],
-        blur: Math.random() * 1.2,
-      })),
+      Array.from({ length: 12 }).map((_, i) => {
+        // Use index-based deterministic values to avoid hydration mismatch
+        const seed = i / 12;
+        return {
+          id: i,
+          delay: seed * 8,
+          duration: 15 + seed * 10,
+          startX: (i * 8.33) % 100,
+          endX: ((i * 8.33) + 50) % 100,
+          startY: 110,
+          midY: 50 + (seed * 20),
+          endY: -20 - (seed * 10),
+          rotation: i * 30,
+          scale1: 0.4 + (seed * 0.3),
+          scale2: 0.8 + (seed * 0.4),
+          opacity: 0.2 + (seed * 0.15),
+          note: ['🎵', '🎶', '🎼', '🎹', '🎺', '🎸', '🎻', '🎤'][i % 8],
+          blur: seed * 1.2,
+        };
+      }),
     []
   );
+
+  // Only enable animations after mount to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const countryMap = useMemo(
     () => new Map(topCountries.map((country) => [country.name, country] as const)),
@@ -174,7 +184,7 @@ export function HeroSection({
     >
       {/* Floating Music Notes Animation - Random & Stable */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {floatingNotes.map((note) => (
+        {isMounted && floatingNotes.map((note) => (
           <motion.div
             key={note.id}
             className="absolute text-2xl"
