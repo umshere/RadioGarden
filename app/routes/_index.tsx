@@ -308,7 +308,7 @@ export default function Index() {
         const continent = atlasNavigation.selectContinentForCountry(station.country) ?? "Asia";
         atlas.setSelectedContinent((prev) => prev ?? continent);
         setHasDismissedPlayer(false);
-        player.setNowPlaying(station);
+        player.startStation(station, { autoPlay: false, preserveQueue: true });
       } catch (error) {
         console.error("Failed to seed station", error);
       }
@@ -353,7 +353,7 @@ export default function Index() {
     }}>
       <header className="fixed top-0 left-0 right-0 z-50 nav-shell backdrop-blur-lg" {...ariaHidden}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-8">
-          <Link to="/" className="flex items-center gap-3 text-sm font-semibold text-slate-100 transition-transform hover:scale-105" onClick={handlers.handleBackToWorldView}>
+          <Link to="/world" className="flex items-center gap-3 text-sm font-semibold text-slate-100 transition-transform hover:scale-105" onClick={handlers.handleBackToWorldView}>
             <PassportStampIcon size={48} animated={false} id="header" />
             <div className="hidden md:flex md:flex-col">
               <span className="hero-wordmark text-lg leading-tight">Radio Passport</span>
@@ -363,7 +363,8 @@ export default function Index() {
           
           <nav className="flex items-center gap-4">
             <div className="hidden sm:flex sm:items-center sm:gap-1">
-              <Link to="/" className="nav-link" prefetch="intent" preventScrollReset>Home</Link>
+              <Link to="/" className="nav-link" prefetch="intent" preventScrollReset>Local</Link>
+              <Link to="/world" className="nav-link" prefetch="intent" preventScrollReset>World</Link>
               <a href="#explore" className="nav-link" aria-current="page">Explore</a>
               <span className="nav-link opacity-40 cursor-not-allowed" aria-disabled="true" title="Coming soon">Favorites</span>
               <span className="nav-link opacity-40 cursor-not-allowed" aria-disabled="true" title="Coming soon">About</span>
@@ -541,8 +542,8 @@ export default function Index() {
             onPlayPause={player.playPause}
             onPlayNext={playNext}
             onPlayPrevious={playPrevious}
-            onShuffleToggle={() => player.setShuffleMode((prev) => !prev)}
-            onQuickRetune={handlers.handleQuickRetune}
+            onShuffleToggle={() => player.setShuffleMode((prev: boolean) => !prev)}
+            onQuickRetune={() => setIsQuickRetuneOpen(true)}
             onBackToWorld={handlers.handleBackToWorldView}
             onMinimize={() => setIsMinimalPlayer(true)}
             onDismiss={() => {
@@ -555,7 +556,6 @@ export default function Index() {
         )}
       </div>
 
-      <audio ref={player.audioRef} className="hidden" />
     </div>
   );
 }

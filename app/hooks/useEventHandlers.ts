@@ -95,7 +95,7 @@ export function useEventHandlers({
     setHasDismissedPlayer(true);
     setIsQuickRetuneOpen(false);
     atlasNavigation.resetContinent();
-    navigate("/", { preventScrollReset: true });
+    navigate("/world", { preventScrollReset: true });
     scrollToTop();
   }, [
     navigate,

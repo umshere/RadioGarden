@@ -2,6 +2,7 @@ import type { LinksFunction } from "@remix-run/node";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
 import { MantineProvider, createTheme } from "@mantine/core";
 import { useEffect, useRef } from "react";
+import { usePlayerStore } from "~/state/playerStore";
 import stylesheet from "./tailwind.css?url";
 
 export const links: LinksFunction = () => [
@@ -149,11 +150,112 @@ export default function App() {
         }}
       >
         <MantineProvider theme={theme} defaultColorScheme="dark">
-          <Outlet />
+          <>
+            <Outlet />
+            <GlobalAudioBridge />
+          </>
         </MantineProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
     </html>
   );
+}
+
+function GlobalAudioBridge() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const setAudioElement = usePlayerStore((state) => state.setAudioElement);
+  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const setAudioLevel = usePlayerStore((state) => state.setAudioLevel);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const nowPlaying = usePlayerStore((state) => state.nowPlaying);
+
+  useEffect(() => {
+    const element = audioRef.current;
+    if (element) {
+      element.autoplay = false;
+      element.preload = "none";
+      element.crossOrigin = "anonymous";
+    }
+    setAudioElement(element ?? null);
+
+    return () => {
+      setAudioElement(null);
+    };
+  }, [setAudioElement]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handlePause);
+
+    return () => {
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handlePause);
+    };
+  }, [setIsPlaying]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!nowPlaying) {
+      audio.pause();
+      audio.removeAttribute("src");
+      return;
+    }
+
+    const streamUrl = nowPlaying.streamUrl ?? nowPlaying.url ?? "";
+    if (!streamUrl) {
+      audio.pause();
+      audio.removeAttribute("src");
+      return;
+    }
+
+    const absoluteStreamUrl = new URL(streamUrl, window.location.origin).href;
+    if (audio.src !== absoluteStreamUrl) {
+      audio.src = absoluteStreamUrl;
+    }
+  }, [nowPlaying]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!nowPlaying) {
+      audio.pause();
+      return;
+    }
+
+    if (isPlaying) {
+      void audio.play().catch(() => setIsPlaying(false));
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying, nowPlaying, setIsPlaying]);
+
+  useEffect(() => {
+    let frame = 0;
+
+    const animate = () => {
+      setAudioLevel(isPlaying ? Math.random() * 0.6 + 0.2 : 0);
+      frame = requestAnimationFrame(animate);
+    };
+
+    frame = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      setAudioLevel(0);
+    };
+  }, [isPlaying, setAudioLevel]);
+
+  return <audio ref={audioRef} className="hidden" />;
 }
