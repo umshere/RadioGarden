@@ -63,6 +63,8 @@ export const usePlayerStore = create<PlayerState>(
         const streamUrl = station.streamUrl ?? station.url ?? "";
         const preserveQueue = options?.preserveQueue ?? false;
         const currentQueue = get().queue;
+        // When preserveQueue is false, move the station to the front of the queue,
+        // removing any previous occurrence. This is a 'move to front' operation.
         const nextQueue = preserveQueue
           ? currentQueue
           : [station, ...currentQueue.filter((item) => item.uuid !== station.uuid)];
