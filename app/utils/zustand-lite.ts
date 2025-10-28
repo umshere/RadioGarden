@@ -1,4 +1,4 @@
-import { useDebugValue, useEffect, useRef, useSyncExternalStore } from "react";
+import { useDebugValue, useRef, useSyncExternalStore } from "react";
 
 type SetState<T> = (
   partial: Partial<T> | T | ((state: T) => Partial<T> | T),
@@ -106,17 +106,20 @@ export function createStore<T>(initializer: StateCreator<T>): UseBoundStore<T> {
   function useStore<U>(selector?: Selector<T, U>, equalityFn: EqualityChecker<U> = Object.is): T | U {
     const selectorRef = useRef(selector ?? (identitySelector as Selector<T, U>));
     const equalityRef = useRef(equalityFn ?? (defaultEqualityFn as EqualityChecker<U>));
-
-    useEffect(() => {
-      selectorRef.current = selector ?? (identitySelector as Selector<T, U>);
-    }, [selector]);
-
-    useEffect(() => {
-      equalityRef.current = equalityFn ?? (defaultEqualityFn as EqualityChecker<U>);
-    }, [equalityFn]);
-
     const lastSliceRef = useRef<T | U>();
     const hasSliceRef = useRef(false);
+
+    const selectorToUse = selector ?? (identitySelector as Selector<T, U>);
+    const equalityToUse = equalityFn ?? (defaultEqualityFn as EqualityChecker<U>);
+
+    if (selectorRef.current !== selectorToUse) {
+      selectorRef.current = selectorToUse;
+      hasSliceRef.current = false;
+    }
+
+    if (equalityRef.current !== equalityToUse) {
+      equalityRef.current = equalityToUse;
+    }
 
     const getSelectedState = () => {
       const currentState = getState();
@@ -129,7 +132,10 @@ export function createStore<T>(initializer: StateCreator<T>): UseBoundStore<T> {
       getSelectedState
     );
 
-    if (!hasSliceRef.current || !equalityRef.current(lastSliceRef.current as U, selectedState as U)) {
+    if (
+      !hasSliceRef.current ||
+      !equalityRef.current(lastSliceRef.current as U, selectedState as U)
+    ) {
       hasSliceRef.current = true;
       lastSliceRef.current = selectedState;
     }
