@@ -17,7 +17,8 @@
     "baseUrl": ".",
     "types": ["@remix-run/node", "vite/client"],
     "paths": {
-      "~/*": ["./app/*"]
+      "~/*": ["./app/*"],
+      "zustand": ["./app/vendor/zustand"]
     },
     "noUncheckedIndexedAccess": true,
     "ignoreDeprecations": "5.0"

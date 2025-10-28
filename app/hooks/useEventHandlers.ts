@@ -11,6 +11,7 @@ import {
 } from "~/utils/scrollHelpers";
 import { normalizeStations } from "~/utils/stations";
 import { pickTopStation } from "~/utils/stationMeta";
+import { loadWorldDescriptor } from "~/services/aiOrchestrator";
 
 interface UseEventHandlersProps {
   player: any;
@@ -53,6 +54,10 @@ export function useEventHandlers({
   countries,
   atlasNavigation,
 }: UseEventHandlersProps) {
+  const setIsFetchingExplore = mode.setIsFetchingExplore;
+  const setExploreStations = mode.setExploreStations;
+  const currentStationId = player?.nowPlaying?.uuid ?? null;
+
   const handlePreviewCountryPlay = useCallback(
     async (countryName: string) => {
       try {
@@ -176,17 +181,65 @@ export function useEventHandlers({
     handleStartStation,
   ]);
 
+  const requestWorldDescriptor = useCallback(
+    async (stationId: string | null) => {
+      if (mode.isFetchingExplore) return false;
+
+      setIsFetchingExplore(true);
+      try {
+        await loadWorldDescriptor({
+          currentStationId: stationId,
+          onStationsResolved: (stations) => {
+            setExploreStations(stations);
+          },
+          onStartStation: (station, { autoPlay }) => {
+            setActiveCardIndex(1);
+            handleStartStation(station, { autoPlay, preserveQueue: true });
+          },
+        });
+        return true;
+      } catch (error) {
+        console.error("Failed to load world descriptor", error);
+        return false;
+      } finally {
+        setIsFetchingExplore(false);
+      }
+    },
+    [
+      mode.isFetchingExplore,
+      setIsFetchingExplore,
+      setExploreStations,
+      setActiveCardIndex,
+      handleStartStation,
+    ]
+  );
+
   const handleMissionExploreWorld = useCallback(() => {
     mode.setListeningMode("world");
     atlasNavigation.resetContinent();
     scrollIfOffscreen("player", "center");
 
-    const first = mode.exploreStations[0];
-    if (first) {
-      setActiveCardIndex(1);
-      handleStartStation(first);
-    }
-  }, [mode, atlasNavigation, handleStartStation, setActiveCardIndex]);
+    requestWorldDescriptor(currentStationId).then((success) => {
+      if (success) return;
+      const fallback = mode.exploreStations[0];
+      if (fallback) {
+        setActiveCardIndex(1);
+        handleStartStation(fallback);
+      }
+    });
+  }, [
+    mode,
+    atlasNavigation,
+    requestWorldDescriptor,
+    currentStationId,
+    handleStartStation,
+    setActiveCardIndex,
+  ]);
+
+  const handleWorldMoodRefresh = useCallback(() => {
+    if (mode.isFetchingExplore) return;
+    void requestWorldDescriptor(currentStationId);
+  }, [mode.isFetchingExplore, requestWorldDescriptor, currentStationId]);
 
   const handleMissionStayLocal = useCallback(() => {
     mode.setListeningMode("local");
@@ -222,6 +275,7 @@ export function useEventHandlers({
     handleQuickRetuneCountrySelect,
     handleSurpriseRetune,
     handleMissionExploreWorld,
+    handleWorldMoodRefresh,
     handleMissionStayLocal,
     handleToggleListeningMode,
   };
