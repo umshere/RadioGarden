@@ -1,5 +1,4 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { create, persist } from "~/utils/zustand-lite";
 import type { Station } from "~/types/radio";
 
 type StartStationOptions = {
