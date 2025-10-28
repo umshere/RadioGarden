@@ -1,10 +1,20 @@
 import type { Station } from "~/types/radio";
 
-export type SceneDescriptor = {
+export type PlaybackStrategy = "autoplay_first" | "queue_only" | "preview_on_hover";
+
+export interface ScenePlayOptions {
+  strategy: PlaybackStrategy;
+  crossfadeMs?: number;
+}
+
+export interface SceneDescriptor {
+  visual: string;
+  mood?: string;
+  animation?: string;
+  play?: ScenePlayOptions;
   stations: Station[];
-  mood?: string | null;
-  animation?: Record<string, unknown> | null;
-};
+  reason?: string;
+}
 
 export type SceneComponentProps = {
   descriptor: SceneDescriptor;

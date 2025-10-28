@@ -231,9 +231,9 @@ export function PlayerCardStack({
         : "AI descriptor request failed.";
     }
 
-    if (worldDescriptor.descriptor) {
+    if (worldDescriptor.descriptorSummary) {
       const moodSuffix = worldDescriptor.mood ? ` (${worldDescriptor.mood})` : "";
-      return `AI vibe • ${worldDescriptor.descriptor}${moodSuffix}`;
+      return `AI vibe • ${worldDescriptor.descriptorSummary}${moodSuffix}`;
     }
 
     return "Use the mic in world mode to set an AI-crafted vibe.";

@@ -184,13 +184,13 @@ export function ModeBar({
     }
     if (descriptorState.status === "error" && descriptorState.error)
       return `AI error: ${descriptorState.error}`;
-    if (descriptorState.descriptor)
-      return `AI vibe • ${descriptorState.descriptor}`;
+    if (descriptorState.descriptorSummary)
+      return `AI vibe • ${descriptorState.descriptorSummary}`;
     if (lastTranscript)
       return `Heard “${lastTranscript}”. Updating the vibe soon.`;
     return "Use the mic to ask for a new mood or genre.";
   }, [
-    descriptorState.descriptor,
+    descriptorState.descriptorSummary,
     descriptorState.error,
     descriptorState.status,
     isSupported,

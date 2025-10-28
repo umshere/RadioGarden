@@ -1,77 +1,85 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
+import type { SceneDescriptor } from "~/scenes/types";
+import type { Station } from "~/types/radio";
 
-export type SceneDescriptor = {
-  id: string;
-  component: string;
-  props?: Record<string, unknown>;
+const sceneLoaders: Record<string, () => Promise<{ default: ComponentType<any> }>> = {
+  atlas: () => import("~/scenes/AtlasScene"),
+  "3d_globe": () => import("~/scenes/3d_globe"),
+  card_stack: () => import("~/scenes/card_stack"),
 };
 
 type SceneManagerProps = {
   descriptor: SceneDescriptor | null;
+  activeStationId?: string | null;
+  onStationSelect?: (station: Station) => void;
+  className?: string;
   fallback?: ReactNode;
   empty?: ReactNode;
 };
 
-type LoadedScene = ComponentType<any>;
-
-// Scene registry to handle dynamic imports properly
-const sceneLoaders: Record<string, () => Promise<{ default: LoadedScene }>> = {
-  AtlasScene: () => import("~/scenes/AtlasScene"),
-  // Add other scenes here as needed
-};
-
-export function SceneManager({ descriptor, fallback = null, empty = null }: SceneManagerProps) {
-  const [SceneComponent, setSceneComponent] = useState<LoadedScene | null>(null);
+export function SceneManager({
+  descriptor,
+  activeStationId,
+  onStationSelect,
+  className,
+  fallback = null,
+  empty = null,
+}: SceneManagerProps) {
+  const [SceneComponent, setSceneComponent] = useState<ComponentType<any> | null>(null);
   const [error, setError] = useState<Error | null>(null);
-  const key = descriptor?.component ?? "__none__";
+  const visual = descriptor?.visual;
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!descriptor) {
+    if (!visual) {
       setSceneComponent(null);
       setError(null);
+      return;
+    }
+
+    const loader = sceneLoaders[visual];
+    if (!loader) {
+      console.error(`Scene "${visual}" not found in registry.`);
+      setError(new Error(`Scene "${visual}" not registered.`));
+      setSceneComponent(null);
       return;
     }
 
     setError(null);
     setSceneComponent(null);
 
-    const loader = sceneLoaders[descriptor.component];
-    
-    if (!loader) {
-      setError(new Error(`Scene "${descriptor.component}" not found in registry.`));
-      console.error(`Failed to load scene "${descriptor.component}"`, new Error("Scene not registered"));
-      return;
-    }
-
     loader()
       .then((module) => {
         if (cancelled) return;
-        const resolved = (module as { default?: LoadedScene }).default;
+        const resolved = (module as { default?: ComponentType<any> }).default;
         if (!resolved) {
-          setError(
-            new Error(
-              `Scene "${descriptor.component}" does not export a default React component.`
-            )
-          );
+          setError(new Error(`Scene "${visual}" did not export a default component.`));
           return;
         }
         setSceneComponent(() => resolved);
       })
       .catch((err) => {
         if (cancelled) return;
-        console.error(`Failed to load scene "${descriptor.component}"`, err);
+        console.error(`Failed to load scene "${visual}"`, err);
         setError(err instanceof Error ? err : new Error(String(err)));
       });
 
     return () => {
       cancelled = true;
     };
-  }, [key, descriptor]);
+  }, [visual]);
 
-  const sceneProps = useMemo(() => descriptor?.props ?? {}, [descriptor?.props]);
+  const sceneProps = useMemo(
+    () => ({
+      descriptor,
+      activeStationId,
+      onStationSelect,
+      className,
+    }),
+    [descriptor, activeStationId, onStationSelect, className]
+  );
 
   if (!descriptor) {
     return <>{empty}</>;
@@ -92,3 +100,5 @@ export function SceneManager({ descriptor, fallback = null, empty = null }: Scen
 
   return <SceneComponent {...sceneProps} />;
 }
+
+export type { SceneDescriptor };

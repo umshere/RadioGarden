@@ -9,9 +9,15 @@ export function useRadioPlayer() {
   const shuffleMode = usePlayerStore((state) => state.shuffleMode);
   const currentStationIndex = usePlayerStore((state) => state.currentStationIndex);
   const queue = usePlayerStore((state) => state.queue);
+  const crossfadeMs = usePlayerStore((state) => state.crossfadeMs);
   const setShuffleMode = usePlayerStore((state) => state.setShuffleMode);
   const setCurrentStationIndex = usePlayerStore((state) => state.setCurrentStationIndex);
   const setNowPlaying = usePlayerStore((state) => state.setNowPlaying);
+  const setQueue = usePlayerStore((state) => state.setQueue);
+  const enqueueStations = usePlayerStore((state) => state.enqueueStations);
+  const clearQueue = usePlayerStore((state) => state.clearQueue);
+  const setCrossfadeMs = usePlayerStore((state) => state.setCrossfadeMs);
+  const applySceneDescriptor = usePlayerStore((state) => state.applySceneDescriptor);
   const startStation = usePlayerStore((state) => state.startStation);
   const playPause = usePlayerStore((state) => state.playPause);
   const stop = usePlayerStore((state) => state.stop);
@@ -25,9 +31,15 @@ export function useRadioPlayer() {
       shuffleMode,
       currentStationIndex,
       queue,
+      crossfadeMs,
       setShuffleMode,
       setCurrentStationIndex,
       setNowPlaying,
+      setQueue,
+      enqueueStations,
+      clearQueue,
+      setCrossfadeMs,
+      applySceneDescriptor,
       startStation,
       playPause,
       stop,
@@ -39,9 +51,15 @@ export function useRadioPlayer() {
       shuffleMode,
       currentStationIndex,
       queue,
+      crossfadeMs,
       setShuffleMode,
       setCurrentStationIndex,
       setNowPlaying,
+      setQueue,
+      enqueueStations,
+      clearQueue,
+      setCrossfadeMs,
+      applySceneDescriptor,
       startStation,
       playPause,
       stop,

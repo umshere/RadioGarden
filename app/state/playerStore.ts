@@ -1,4 +1,5 @@
 import { create, persist } from "~/utils/zustand-lite";
+import type { SceneDescriptor } from "~/scenes/types";
 import type { Station } from "~/types/radio";
 
 type StartStationOptions = {
@@ -10,6 +11,7 @@ type PlayerState = {
   audioElement: HTMLAudioElement | null;
   nowPlaying: Station | null;
   queue: Station[];
+  crossfadeMs: number;
   isPlaying: boolean;
   audioLevel: number;
   shuffleMode: boolean;
@@ -20,6 +22,11 @@ type PlayerState = {
   setCurrentStationIndex: (index: number) => void;
   setIsPlaying: (value: boolean) => void;
   setNowPlaying: (station: Station | null) => void;
+  setQueue: (stations: Station[]) => void;
+  enqueueStations: (stations: Station[]) => void;
+  clearQueue: () => void;
+  setCrossfadeMs: (value: number) => void;
+  applySceneDescriptor: (descriptor: SceneDescriptor) => Station | null;
   startStation: (station: Station, options?: StartStationOptions) => void;
   playPause: () => void;
   stop: () => void;
@@ -92,6 +99,7 @@ export const usePlayerStore = create<PlayerState>(
       audioElement: null,
       nowPlaying: null,
       queue: [],
+      crossfadeMs: 0,
       isPlaying: false,
       audioLevel: 0,
       shuffleMode: false,
@@ -119,6 +127,36 @@ export const usePlayerStore = create<PlayerState>(
           }
           set({ isPlaying: false });
         }
+      },
+      setQueue: (stations: Station[]) => {
+        set({ queue: [...stations], currentStationIndex: 0 });
+      },
+      enqueueStations: (stations: Station[]) => {
+        set((state) => ({ queue: [...state.queue, ...stations] }));
+      },
+      clearQueue: () => {
+        set({ queue: [], currentStationIndex: 0 });
+      },
+      setCrossfadeMs: (value: number) => {
+        const normalized = Math.max(0, Math.round(value));
+        set({ crossfadeMs: normalized });
+      },
+      applySceneDescriptor: (descriptor: SceneDescriptor) => {
+        const stations = Array.isArray(descriptor.stations) ? descriptor.stations : [];
+        const strategy = descriptor.play?.strategy ?? "autoplay_first";
+        const crossfade = descriptor.play?.crossfadeMs ?? 0;
+
+        set({
+          queue: stations,
+          currentStationIndex: 0,
+          crossfadeMs: Math.max(0, Math.round(crossfade)),
+        });
+
+        if (strategy === "autoplay_first" && stations[0]) {
+          return stations[0];
+        }
+
+        return null;
       },
       startStation: (station: Station, options?: StartStationOptions) => {
         const streamUrl = station.streamUrl ?? station.url ?? "";

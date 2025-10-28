@@ -29,8 +29,11 @@ export type Station = {
   clickCount?: number;
   clickTrend?: number;
   votes?: number;
+  highlight?: string | null;
   isStreamHealthy?: boolean;
   healthStatus?: "good" | "warning" | "error";
+  isLikelyUp?: boolean | null;
+  healthScore?: number | null;
 };
 
 export type ListeningMode = "world" | "local";
