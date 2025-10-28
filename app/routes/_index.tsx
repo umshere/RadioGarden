@@ -13,7 +13,9 @@ import { rbFetchJson } from "~/utils/radioBrowser";
 import { normalizeStations } from "~/utils/stations";
 import { rankStations, pickTopStation } from "~/utils/stationMeta";
 import { vibrate } from "~/utils/haptics";
+import type { AiDescriptorState, VoiceCommandPayload } from "~/types/ai";
 import type { Country, Station } from "~/types/radio";
+import { callAiOrchestrator } from "~/utils/aiOrchestrator";
 
 // Components
 import { HeroSection } from "./components/HeroSection";
@@ -99,6 +101,15 @@ export default function Index() {
   const [showNavigationIndicator, setShowNavigationIndicator] = useState(false);
   const [isMinimalPlayer, setIsMinimalPlayer] = useState(false);
   const stationRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [descriptorState, setDescriptorState] = useState<AiDescriptorState>({
+    status: "idle",
+    mood: null,
+    transcript: null,
+    descriptor: null,
+    error: null,
+    updatedAt: null,
+  });
+  const aiDescriptorAbortRef = useRef<AbortController | null>(null);
 
   // Derived data
   const topCountries = useMemo(
@@ -166,6 +177,79 @@ export default function Index() {
     setCardDirection(index > activeCardIndex ? 1 : -1);
     setActiveCardIndex(index);
   }, [activeCardIndex, cards.playerCards.length]);
+
+  const handleVoiceDescriptorRequest = useCallback(
+    async ({ mood, transcript }: VoiceCommandPayload) => {
+      aiDescriptorAbortRef.current?.abort();
+
+      const abortController = new AbortController();
+      aiDescriptorAbortRef.current = abortController;
+
+      setDescriptorState((prev) => ({
+        status: "loading",
+        mood,
+        transcript,
+        descriptor: prev.descriptor,
+        error: null,
+        updatedAt: prev.updatedAt,
+      }));
+
+      mode.setListeningMode("world");
+
+      try {
+        const response = await callAiOrchestrator(
+          { mood, transcript },
+          { signal: abortController.signal }
+        );
+
+        if (aiDescriptorAbortRef.current !== abortController) {
+          return;
+        }
+
+        setDescriptorState({
+          status: "success",
+          mood: response.mood ?? mood,
+          transcript,
+          descriptor: response.descriptor,
+          error: null,
+          updatedAt: Date.now(),
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          if (aiDescriptorAbortRef.current === abortController) {
+            aiDescriptorAbortRef.current = null;
+            setDescriptorState((prev) => ({
+              ...prev,
+              status: prev.descriptor ? "success" : "idle",
+              error: null,
+            }));
+          }
+          return;
+        }
+
+        if (aiDescriptorAbortRef.current !== abortController) {
+          return;
+        }
+
+        setDescriptorState((prev) => ({
+          status: "error",
+          mood,
+          transcript,
+          descriptor: prev.descriptor,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to contact AI orchestrator",
+          updatedAt: Date.now(),
+        }));
+      } finally {
+        if (aiDescriptorAbortRef.current === abortController) {
+          aiDescriptorAbortRef.current = null;
+        }
+      }
+    },
+    [mode]
+  );
 
   const handleToggleFavorite = useCallback((station: Station) => {
     vibrate(10);
@@ -249,6 +333,12 @@ export default function Index() {
     if (cards.playerCards.length === 0) setActiveCardIndex(0);
     else if (activeCardIndex > cards.playerCards.length - 1) setActiveCardIndex(cards.playerCards.length - 1);
   }, [activeCardIndex, cards.playerCards.length]);
+
+  useEffect(() => {
+    return () => {
+      aiDescriptorAbortRef.current?.abort();
+    };
+  }, []);
 
   // Render
   const ariaHidden = isQuickRetuneOpen ? { "aria-hidden": true, style: { pointerEvents: "none" as const, userSelect: "none" as const } } : {};
@@ -356,17 +446,31 @@ export default function Index() {
               stationCount={stations.length} onBack={handlers.handleBackToWorldView}
             />
 
-            <PlayerCardStack playerCards={cards.playerCards} activeCardIndex={activeCardIndex} cardDirection={cardDirection}
-              nowPlaying={player.nowPlaying} isPlaying={player.isPlaying} listeningMode={mode.listeningMode}
+            <PlayerCardStack
+              playerCards={cards.playerCards}
+              activeCardIndex={activeCardIndex}
+              cardDirection={cardDirection}
+              nowPlaying={player.nowPlaying}
+              isPlaying={player.isPlaying}
+              listeningMode={mode.listeningMode}
               stackStations={cards.deckStations}
               recentStations={recentStations}
-              favoriteStationIds={favoriteStationIds} countryMap={atlas.countryMap} hasStationsToCycle={cards.hasStationsToCycle}
-              isFetchingExplore={mode.isFetchingExplore} localStationCount={stations.length}
-              globalStationCount={mode.exploreStations.length || cards.deckStations.length} selectedCountry={selectedCountry}
-              onCardChange={handleCardChange} onCardJump={handleCardJump} onToggleFavorite={handleToggleFavorite}
-              onStartStation={handleStartStation} onPlayPause={player.playPause} onPlayNext={playNext}
-              onSetListeningMode={mode.setListeningMode} onMissionExploreWorld={handlers.handleMissionExploreWorld}
-              onRequestWorldMood={handleWorldMoodRefresh}
+              favoriteStationIds={favoriteStationIds}
+              countryMap={atlas.countryMap}
+              hasStationsToCycle={cards.hasStationsToCycle}
+              isFetchingExplore={mode.isFetchingExplore}
+              localStationCount={stations.length}
+              globalStationCount={mode.exploreStations.length || cards.deckStations.length}
+              selectedCountry={selectedCountry}
+              worldDescriptor={descriptorState}
+              onCardChange={handleCardChange}
+              onCardJump={handleCardJump}
+              onToggleFavorite={handleToggleFavorite}
+              onStartStation={handleStartStation}
+              onPlayPause={player.playPause}
+              onPlayNext={playNext}
+              onSetListeningMode={mode.setListeningMode}
+              onMissionExploreWorld={handlers.handleMissionExploreWorld}
               onMissionStayLocal={handlers.handleMissionStayLocal}
             />
 
@@ -438,13 +542,15 @@ export default function Index() {
             onPlayNext={playNext}
             onPlayPrevious={playPrevious}
             onShuffleToggle={() => player.setShuffleMode((prev) => !prev)}
-            onQuickRetune={() => setIsQuickRetuneOpen(true)}
+            onQuickRetune={handlers.handleQuickRetune}
             onBackToWorld={handlers.handleBackToWorldView}
             onMinimize={() => setIsMinimalPlayer(true)}
             onDismiss={() => {
               player.stop();
               setHasDismissedPlayer(true);
             }}
+            descriptorState={descriptorState}
+            onVoiceDescriptor={handleVoiceDescriptorRequest}
           />
         )}
       </div>
