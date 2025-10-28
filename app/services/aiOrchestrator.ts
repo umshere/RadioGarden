@@ -105,6 +105,7 @@ function validateDescriptor(payload: unknown): WorldMoodDescriptor {
 export type LoadWorldDescriptorOptions = {
   signal?: AbortSignal;
   currentStationId?: string | null;
+  mood?: string;
   onStationsResolved?: (stations: Station[]) => void;
   onStartStation?: (station: Station, options: { autoPlay: boolean }) => void;
 };
@@ -112,9 +113,10 @@ export type LoadWorldDescriptorOptions = {
 const ENDPOINT = "/api/ai/recommend";
 
 export async function loadWorldDescriptor(options: LoadWorldDescriptorOptions = {}) {
-  const { signal, currentStationId, onStationsResolved, onStartStation } = options;
+  const { signal, currentStationId, mood, onStationsResolved, onStartStation } = options;
 
-  const response = await fetch(ENDPOINT, { signal });
+  const endpoint = mood ? `${ENDPOINT}?mood=${encodeURIComponent(mood)}` : ENDPOINT;
+  const response = await fetch(endpoint, { signal });
   if (!response.ok) {
     throw new Error(`Failed to load AI descriptor (${response.status})`);
   }

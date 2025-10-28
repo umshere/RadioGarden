@@ -49,14 +49,41 @@ const mergePersistedState = (persisted: unknown, current: PlayerState): PlayerSt
     return current;
   }
 
+  const persistedObj = persisted as Record<string, unknown>;
+  
+  // Build the merged state only if there are actual differences
   const next: Record<string, unknown> = { ...current };
-  for (const [key, value] of Object.entries(persisted as Record<string, unknown>)) {
-    if (typeof value === "function") continue;
-    if (!(key in next)) continue;
-    next[key] = value;
+  let hasChanges = false;
+  
+  for (const [key, value] of Object.entries(persistedObj)) {
+    // Skip functions and non-existent keys
+    if (typeof value === "function" || !(key in next)) continue;
+    
+    // Only update if the value actually changed
+    const currentValue = next[key];
+    if (!Object.is(currentValue, value)) {
+      // For objects, do a shallow comparison
+      if (
+        typeof currentValue === "object" && 
+        currentValue !== null && 
+        typeof value === "object" && 
+        value !== null
+      ) {
+        const currentStr = JSON.stringify(currentValue);
+        const valueStr = JSON.stringify(value);
+        if (currentStr !== valueStr) {
+          next[key] = value;
+          hasChanges = true;
+        }
+      } else {
+        next[key] = value;
+        hasChanges = true;
+      }
+    }
   }
 
-  return next as PlayerState;
+  // Return the same object reference if nothing changed
+  return hasChanges ? (next as PlayerState) : current;
 };
 
 export const usePlayerStore = create<PlayerState>(
@@ -72,7 +99,10 @@ export const usePlayerStore = create<PlayerState>(
       setAudioElement: (element: HTMLAudioElement | null) => {
         set({ audioElement: element });
       },
-      setAudioLevel: (level: number) => set({ audioLevel: level }),
+      setAudioLevel: (level: number) => {
+        if (get().audioLevel === level) return;
+        set({ audioLevel: level });
+      },
       setShuffleMode: (value: boolean | ((prev: boolean) => boolean)) =>
         set((state) => ({
           shuffleMode: typeof value === "function" ? value(state.shuffleMode) : value,
