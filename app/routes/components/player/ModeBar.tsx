@@ -49,7 +49,7 @@ function extractMoodFromTranscript(transcript: string): string | null {
 }
 
 const truncate = (value: string, limit = 96) =>
-  value.length > limit ? `${value.slice(0, limit - 1)}…` : value;
+  value.length > limit ? `${value.slice(0, limit)}…` : value;
 
 type ModeBarProps = {
   listeningMode: ListeningMode;
