@@ -26,9 +26,7 @@ type PlayerState = {
   stop: () => void;
 };
 
-const storage = createJSONStorage(() =>
-  typeof window === "undefined" ? undefined : window.localStorage
-);
+const storage = createJSONStorage(() => (typeof window !== "undefined" ? window.localStorage : undefined) as any);
 
 export const usePlayerStore = create<PlayerState>(
   persist(
