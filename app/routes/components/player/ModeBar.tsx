@@ -200,7 +200,7 @@ export function ModeBar({
 
   return (
     <div className="flex items-center justify-between gap-4 border-t border-white/8 bg-white/3 px-4 py-2.5">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-3 flex-nowrap">
         <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5">
           <Text size="xs" c="rgba(244,237,224,0.5)" fw={500} style={{ letterSpacing: "0.5px" }}>
             MODE
