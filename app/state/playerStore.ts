@@ -72,7 +72,10 @@ export const usePlayerStore = create<PlayerState>(
       setAudioElement: (element: HTMLAudioElement | null) => {
         set({ audioElement: element });
       },
-      setAudioLevel: (level: number) => set({ audioLevel: level }),
+      setAudioLevel: (level: number) => {
+        if (get().audioLevel === level) return;
+        set({ audioLevel: level });
+      },
       setShuffleMode: (value: boolean | ((prev: boolean) => boolean)) =>
         set((state) => ({
           shuffleMode: typeof value === "function" ? value(state.shuffleMode) : value,

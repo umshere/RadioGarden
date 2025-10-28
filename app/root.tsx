@@ -242,10 +242,15 @@ function GlobalAudioBridge() {
   }, [isPlaying, nowPlaying, setIsPlaying]);
 
   useEffect(() => {
+    if (!isPlaying) {
+      setAudioLevel(0);
+      return;
+    }
+
     let frame = 0;
 
     const animate = () => {
-      setAudioLevel(isPlaying ? Math.random() * 0.6 + 0.2 : 0);
+      setAudioLevel(Math.random() * 0.6 + 0.2);
       frame = requestAnimationFrame(animate);
     };
 
@@ -253,7 +258,6 @@ function GlobalAudioBridge() {
 
     return () => {
       cancelAnimationFrame(frame);
-      setAudioLevel(0);
     };
   }, [isPlaying, setAudioLevel]);
 
