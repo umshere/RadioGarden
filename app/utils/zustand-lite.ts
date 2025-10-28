@@ -103,7 +103,7 @@ export function createStore<T>(initializer: StateCreator<T>): UseBoundStore<T> {
 
   function useStore(): T;
   function useStore<U>(selector: Selector<T, U>, equalityFn?: EqualityChecker<U>): U;
-  function useStore<U>(selector?: Selector<T, U>, equalityFn: EqualityChecker<U> = Object.is): T | U {
+  function useStore<U>(selector?: Selector<T, U>, equalityFn: EqualityChecker<U> = defaultEqualityFn): T | U {
     const selectorRef = useRef(selector ?? (identitySelector as Selector<T, U>));
     const equalityRef = useRef(equalityFn ?? (defaultEqualityFn as EqualityChecker<U>));
     const lastSliceRef = useRef<T | U>();
