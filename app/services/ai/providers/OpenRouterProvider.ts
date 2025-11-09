@@ -7,10 +7,10 @@ import { normalizeStations } from "~/utils/stations";
 
 const OPTIMIZED_MODEL_ROTATION = [
   "meta-llama/llama-3.3-8b-instruct:free",
-  "mistralai/mistral-7b-instruct",
-  "nousresearch/nous-hermes-2-mixtral-8x7b-dpo",
-  "google/gemma-7b-it",
-  "openai/gpt-3.5-turbo",
+  "mistralai/mistral-7b-instruct:free",
+  "google/gemma-7b-it:free",
+  "microsoft/wizardlm-2-8x22b:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
 ];
 
 const SYSTEM_PROMPT = `You are Radio Passport's music curator. Create a card_stack scene JSON.
