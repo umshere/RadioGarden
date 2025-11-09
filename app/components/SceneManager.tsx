@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
-import type { SceneDescriptor } from "~/scenes/types";
+import type { SceneDescriptor, SceneStatus } from "~/scenes/types";
 import type { Station } from "~/types/radio";
 
 const sceneLoaders: Record<string, () => Promise<{ default: ComponentType<any> }>> = {
@@ -16,6 +16,7 @@ type SceneManagerProps = {
   className?: string;
   fallback?: ReactNode;
   empty?: ReactNode;
+  sceneStatus?: SceneStatus;
 };
 
 export function SceneManager({
@@ -25,6 +26,7 @@ export function SceneManager({
   className,
   fallback = null,
   empty = null,
+  sceneStatus,
 }: SceneManagerProps) {
   const [SceneComponent, setSceneComponent] = useState<ComponentType<any> | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -77,8 +79,9 @@ export function SceneManager({
       activeStationId,
       onStationSelect,
       className,
+      sceneStatus,
     }),
-    [descriptor, activeStationId, onStationSelect, className]
+    [descriptor, activeStationId, onStationSelect, className, sceneStatus]
   );
 
   if (!descriptor) {

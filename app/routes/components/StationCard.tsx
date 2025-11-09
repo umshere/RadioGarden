@@ -58,6 +58,10 @@ export function StationCard({
     .filter(Boolean)
     .join(" ");
 
+  const activeClass = isCurrent
+    ? "border-yellow-400/80 shadow-lg shadow-yellow-400/10"
+    : "border-white/10";
+
   const externalHref = getExternalHref(station);
 
   return (
@@ -68,9 +72,9 @@ export function StationCard({
       transition={{ delay: index * 0.02 }}
     >
       <div
-        className={`station-card ${isCurrent ? "station-card--active" : ""} ${
+        className={`station-card ${
           isFavorite ? "station-card--favorite" : ""
-        } ${cardStatusClass}`}
+        } ${cardStatusClass} ${activeClass}`}
       >
         <div className="flex items-start gap-4">
           {station.favicon ? (
@@ -302,5 +306,3 @@ function getExternalHref(station: Station): string | undefined {
   if (station.homepage) return station.homepage;
   return undefined;
 }
-
-

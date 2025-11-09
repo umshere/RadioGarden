@@ -16,6 +16,7 @@ type PlayerState = {
   audioLevel: number;
   shuffleMode: boolean;
   currentStationIndex: number;
+  volume: number;
   setAudioElement: (element: HTMLAudioElement | null) => void;
   setAudioLevel: (level: number) => void;
   setShuffleMode: (value: boolean | ((prev: boolean) => boolean)) => void;
@@ -26,9 +27,10 @@ type PlayerState = {
   enqueueStations: (stations: Station[]) => void;
   clearQueue: () => void;
   setCrossfadeMs: (value: number) => void;
+  setVolume: (volume: number) => void;
   applySceneDescriptor: (descriptor: SceneDescriptor) => Station | null;
   startStation: (station: Station, options?: StartStationOptions) => void;
-  playPause: () => void;
+  togglePlay: () => void;
   stop: () => void;
 };
 
@@ -51,29 +53,32 @@ const playerStorage = {
   removeItem: (name: string) => void;
 };
 
-const mergePersistedState = (persisted: unknown, current: PlayerState): PlayerState => {
+const mergePersistedState = (
+  persisted: unknown,
+  current: PlayerState
+): PlayerState => {
   if (!persisted || typeof persisted !== "object") {
     return current;
   }
 
   const persistedObj = persisted as Record<string, unknown>;
-  
+
   // Build the merged state only if there are actual differences
   const next: Record<string, unknown> = { ...current };
   let hasChanges = false;
-  
+
   for (const [key, value] of Object.entries(persistedObj)) {
     // Skip functions and non-existent keys
     if (typeof value === "function" || !(key in next)) continue;
-    
+
     // Only update if the value actually changed
     const currentValue = next[key];
     if (!Object.is(currentValue, value)) {
       // For objects, do a shallow comparison
       if (
-        typeof currentValue === "object" && 
-        currentValue !== null && 
-        typeof value === "object" && 
+        typeof currentValue === "object" &&
+        currentValue !== null &&
+        typeof value === "object" &&
         value !== null
       ) {
         const currentStr = JSON.stringify(currentValue);
@@ -104,6 +109,7 @@ export const usePlayerStore = create<PlayerState>(
       audioLevel: 0,
       shuffleMode: false,
       currentStationIndex: 0,
+      volume: 1,
       setAudioElement: (element: HTMLAudioElement | null) => {
         set({ audioElement: element });
       },
@@ -113,9 +119,11 @@ export const usePlayerStore = create<PlayerState>(
       },
       setShuffleMode: (value: boolean | ((prev: boolean) => boolean)) =>
         set((state) => ({
-          shuffleMode: typeof value === "function" ? value(state.shuffleMode) : value,
+          shuffleMode:
+            typeof value === "function" ? value(state.shuffleMode) : value,
         })),
-      setCurrentStationIndex: (index: number) => set({ currentStationIndex: index }),
+      setCurrentStationIndex: (index: number) =>
+        set({ currentStationIndex: index }),
       setIsPlaying: (value: boolean) => set({ isPlaying: value }),
       setNowPlaying: (station: Station | null) => {
         set({ nowPlaying: station });
@@ -141,8 +149,18 @@ export const usePlayerStore = create<PlayerState>(
         const normalized = Math.max(0, Math.round(value));
         set({ crossfadeMs: normalized });
       },
+      setVolume: (volume: number) => {
+        const newVolume = Math.max(0, Math.min(1, volume));
+        set({ volume: newVolume });
+        const audio = get().audioElement;
+        if (audio) {
+          audio.volume = newVolume;
+        }
+      },
       applySceneDescriptor: (descriptor: SceneDescriptor) => {
-        const stations = Array.isArray(descriptor.stations) ? descriptor.stations : [];
+        const stations = Array.isArray(descriptor.stations)
+          ? descriptor.stations
+          : [];
         const strategy = descriptor.play?.strategy ?? "autoplay_first";
         const crossfade = descriptor.play?.crossfadeMs ?? 0;
 
@@ -161,45 +179,31 @@ export const usePlayerStore = create<PlayerState>(
       startStation: (station: Station, options?: StartStationOptions) => {
         const streamUrl = station.streamUrl ?? station.url ?? "";
         const preserveQueue = options?.preserveQueue ?? false;
+        const shouldAutoplay = options?.autoPlay ?? true;
         const currentQueue = get().queue;
-        // When preserveQueue is false, move the station to the front of the queue,
-        // removing any previous occurrence. This is a 'move to front' operation.
         const nextQueue = preserveQueue
           ? currentQueue
-          : [station, ...currentQueue.filter((item) => item.uuid !== station.uuid)];
+          : [
+              station,
+              ...currentQueue.filter((item) => item.uuid !== station.uuid),
+            ];
 
         set({
           nowPlaying: station,
           queue: nextQueue,
           currentStationIndex: preserveQueue ? get().currentStationIndex : 0,
+          isPlaying: shouldAutoplay && Boolean(streamUrl),
         });
 
-        const audio = get().audioElement;
-        if (!audio || !streamUrl) {
+        if (!streamUrl) {
+          const audio = get().audioElement;
           if (audio) {
             audio.pause();
             audio.removeAttribute("src");
           }
-          set({ isPlaying: false });
-          return;
-        }
-
-        if (audio.src !== streamUrl) {
-          audio.src = streamUrl;
-        }
-
-        const shouldAutoplay = options?.autoPlay ?? true;
-        if (shouldAutoplay) {
-          void audio
-            .play()
-            .then(() => set({ isPlaying: true }))
-            .catch(() => set({ isPlaying: false }));
-        } else {
-          audio.pause();
-          set({ isPlaying: false });
         }
       },
-      playPause: () => {
+      togglePlay: () => {
         const audio = get().audioElement;
         if (!audio) return;
 
@@ -231,6 +235,7 @@ export const usePlayerStore = create<PlayerState>(
         queue: state.queue,
         shuffleMode: state.shuffleMode,
         currentStationIndex: state.currentStationIndex,
+        volume: state.volume,
       }),
     }
   )

@@ -1,11 +1,15 @@
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
+import {
+  json,
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+} from "@remix-run/node";
 import type { PlaybackStrategy, SceneDescriptor } from "~/scenes/types";
 import type { Station } from "~/types/radio";
 import { getProvider } from "~/services/ai/providers";
 import { rankStations } from "~/server/stations/ranking";
 import { annotateHealth } from "~/server/stations/health";
 
-const USE_MOCK = (process.env.USE_MOCK ?? "true").toLowerCase() === "true";
+const USE_MOCK = process.env.USE_MOCK?.toLowerCase() !== "false";
 
 const BASE_STATIONS: Record<string, Station[]> = {
   "aurora-trails": [
@@ -34,7 +38,8 @@ const BASE_STATIONS: Record<string, Station[]> = {
       votes: 0,
       clickCount: 0,
       clickTrend: 0,
-      highlight: "Glacial pads and aurora-inspired textures drifting above Reykjavik.",
+      highlight:
+        "Glacial pads and aurora-inspired textures drifting above Reykjavik.",
     },
     {
       uuid: "aurora-horizon-2",
@@ -451,7 +456,10 @@ function mapPlaybackStrategy(value: string): PlaybackStrategy {
 
 function toSceneDescriptor(definition: MockSceneDefinition): SceneDescriptor {
   const strategy = mapPlaybackStrategy(definition.playback.strategy);
-  const crossfadeMs = Math.max(0, Math.round(definition.playback.crossfadeSeconds * 1000));
+  const crossfadeMs = Math.max(
+    0,
+    Math.round(definition.playback.crossfadeSeconds * 1000)
+  );
 
   return {
     visual: definition.visual,
@@ -470,7 +478,9 @@ function selectMockScene(request: RecommendRequest): MockSceneDefinition {
   const normalizedScene = request.scene?.toLowerCase().trim() ?? null;
   if (normalizedScene) {
     const match = DESCRIPTORS.find(
-      (descriptor) => descriptor.slug === normalizedScene || descriptor.visual === normalizedScene
+      (descriptor) =>
+        descriptor.slug === normalizedScene ||
+        descriptor.visual === normalizedScene
     );
     if (match) {
       return match;
@@ -479,7 +489,9 @@ function selectMockScene(request: RecommendRequest): MockSceneDefinition {
 
   const normalizedVisual = request.visual?.toLowerCase().trim() ?? null;
   if (normalizedVisual) {
-    const match = DESCRIPTORS.find((descriptor) => descriptor.visual === normalizedVisual);
+    const match = DESCRIPTORS.find(
+      (descriptor) => descriptor.visual === normalizedVisual
+    );
     if (match) {
       return match;
     }
@@ -499,10 +511,15 @@ function selectMockScene(request: RecommendRequest): MockSceneDefinition {
     }
   }
 
-  return DESCRIPTORS[Math.floor(Math.random() * DESCRIPTORS.length)] ?? DESCRIPTORS[0]!;
+  return (
+    DESCRIPTORS[Math.floor(Math.random() * DESCRIPTORS.length)] ??
+    DESCRIPTORS[0]!
+  );
 }
 
-async function resolveDescriptor(request: RecommendRequest): Promise<SceneDescriptor> {
+async function resolveDescriptor(
+  request: RecommendRequest
+): Promise<SceneDescriptor> {
   if (USE_MOCK) {
     return toSceneDescriptor(selectMockScene(request));
   }
@@ -522,7 +539,10 @@ async function resolveDescriptor(request: RecommendRequest): Promise<SceneDescri
   };
 }
 
-function applyPostProcessing(descriptor: SceneDescriptor, request: RecommendRequest): SceneDescriptor {
+function applyPostProcessing(
+  descriptor: SceneDescriptor,
+  request: RecommendRequest
+): SceneDescriptor {
   const ranked = rankStations(descriptor.stations, {
     prompt: request.prompt ?? null,
     mood: request.mood ?? null,
@@ -535,7 +555,9 @@ function applyPostProcessing(descriptor: SceneDescriptor, request: RecommendRequ
   };
 }
 
-async function getRecommendation(request: RecommendRequest): Promise<SceneDescriptor> {
+async function getRecommendation(
+  request: RecommendRequest
+): Promise<SceneDescriptor> {
   const descriptor = await resolveDescriptor(request);
   return applyPostProcessing(descriptor, request);
 }

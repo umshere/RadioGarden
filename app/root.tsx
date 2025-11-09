@@ -164,11 +164,13 @@ export default function App() {
 
 function GlobalAudioBridge() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const setAudioElement = usePlayerStore((state) => state.setAudioElement);
-  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
-  const setAudioLevel = usePlayerStore((state) => state.setAudioLevel);
-  const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const nowPlaying = usePlayerStore((state) => state.nowPlaying);
+  const {
+    setAudioElement,
+    setIsPlaying,
+    setAudioLevel,
+    isPlaying,
+    nowPlaying,
+  } = usePlayerStore();
 
   useEffect(() => {
     const element = audioRef.current;
@@ -189,17 +191,15 @@ function GlobalAudioBridge() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => setIsPlaying(false);
+    const handleError = () => setIsPlaying(false);
 
-    audio.addEventListener("play", handlePlay);
-    audio.addEventListener("pause", handlePause);
-    audio.addEventListener("ended", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
 
     return () => {
-      audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("ended", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

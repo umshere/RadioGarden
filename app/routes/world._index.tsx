@@ -8,5 +8,5 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return redirect(`/world/${scene}`);
   }
 
-  return redirect("/world/atlas");
+  return redirect("/world/cards");
 }

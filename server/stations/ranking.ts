@@ -6,15 +6,27 @@ export type IntentMeta = {
 };
 
 const LANGUAGE_ALIASES: Record<string, string[]> = {
-  portuguese: ["pt", "brazil"],
-  spanish: ["es", "latin"],
-  english: ["en", "uk", "us"],
-  french: ["fr", "paris"],
-  japanese: ["ja", "tokyo"],
-  arabic: ["ar", "dubai", "doha", "cairo"],
-  german: ["de", "berlin"],
-  italian: ["it", "rome"],
-  chinese: ["zh", "mandarin", "hong kong"]
+  portuguese: ["pt", "brazil", "portugal"],
+  spanish: ["es", "latin", "spain", "mexico", "argentina"],
+  english: ["en", "uk", "us", "au", "ca", "nz"],
+  french: ["fr", "france", "paris", "quebec"],
+  japanese: ["ja", "japan", "tokyo"],
+  arabic: ["ar", "dubai", "doha", "cairo", "saudi"],
+  german: ["de", "germany", "berlin", "austria"],
+  italian: ["it", "italy", "rome"],
+  chinese: ["zh", "mandarin", "hong kong", "china", "taiwan"],
+  hindi: ["hi", "india"],
+  malayalam: ["ml", "india", "kerala"],
+  tamil: ["ta", "india", "sri lanka", "singapore"],
+  kannada: ["kn", "india", "karnataka"],
+  telugu: ["te", "india", "andhra pradesh"],
+  punjabi: ["pa", "india", "pakistan"],
+  bengali: ["bn", "india", "bangladesh"],
+  marathi: ["mr", "india"],
+  gujarati: ["gu", "india"],
+  korean: ["ko", "korea"],
+  russian: ["ru", "russia"],
+  dutch: ["nl", "netherlands"],
 };
 
 const WEIGHTS = {
@@ -62,13 +74,24 @@ function scoreStation(station: Station, tokens: string[]): number {
     if (tags.has(token)) {
       score += WEIGHTS.tagMatch;
     }
-    if (country && country.includes(token)) {
+    if (country.includes(token)) {
       score += WEIGHTS.countryMatch;
     }
-    if (language && language.includes(token)) {
+    if (language.includes(token)) {
       score += WEIGHTS.languageMatch;
     }
 
+    // Check if the token is a language, and if so, boost matching regions
+    const regionAliases = LANGUAGE_ALIASES[token];
+    if (regionAliases) {
+      for (const alias of regionAliases) {
+        if (country.includes(alias) || language.includes(alias)) {
+          score += WEIGHTS.countryMatch; // Boost country match for that language
+        }
+      }
+    }
+
+    // Check if the token is a region/alias, and if so, boost matching languages
     for (const [lang, aliases] of Object.entries(LANGUAGE_ALIASES)) {
       if (aliases.includes(token) && language.includes(lang)) {
         score += WEIGHTS.languageMatch;
@@ -86,7 +109,10 @@ function scoreStation(station: Station, tokens: string[]): number {
   return score;
 }
 
-export function rankStations(stations: Station[], intentMeta: IntentMeta = {}): Station[] {
+export function rankStations(
+  stations: Station[],
+  intentMeta: IntentMeta = {}
+): Station[] {
   if (!Array.isArray(stations)) {
     return [];
   }

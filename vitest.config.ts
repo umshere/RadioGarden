@@ -5,8 +5,12 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    include: ["tests/unit/**/*.test.ts"],
   },
   resolve: {
-    alias: [{ find: "~", replacement: path.resolve(__dirname, "app") }],
+    alias: [
+      { find: "~/server", replacement: path.resolve(__dirname, "server") },
+      { find: "~", replacement: path.resolve(__dirname, "app") },
+    ],
   },
 });

@@ -1,6 +1,7 @@
 import { OpenAIProvider } from "./OpenAIProvider";
 import { GeminiProvider } from "./GeminiProvider";
 import { OllamaProvider } from "./OllamaProvider";
+import { OpenRouterProvider } from "./OpenRouterProvider";
 import type { AiProvider } from "./BaseProvider";
 
 const providerCache: { instance: AiProvider | null } = { instance: null };
@@ -14,7 +15,15 @@ export function getProvider(): AiProvider {
 
   switch (providerName) {
     case "gemini": {
-      providerCache.instance = new GeminiProvider(process.env.GEMINI_API_KEY ?? "");
+      providerCache.instance = new GeminiProvider(
+        process.env.GEMINI_API_KEY ?? ""
+      );
+      break;
+    }
+    case "openrouter": {
+      providerCache.instance = new OpenRouterProvider(
+        process.env.OPENROUTER_API_KEY ?? ""
+      );
       break;
     }
     case "ollama": {
@@ -23,7 +32,9 @@ export function getProvider(): AiProvider {
     }
     case "openai":
     default: {
-      providerCache.instance = new OpenAIProvider(process.env.OPENAI_API_KEY ?? "");
+      providerCache.instance = new OpenAIProvider(
+        process.env.OPENAI_API_KEY ?? ""
+      );
       break;
     }
   }
