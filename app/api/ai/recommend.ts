@@ -9,13 +9,7 @@ import { getProvider } from "~/services/ai/providers";
 import { rankStations } from "~/server/stations/ranking";
 import { annotateHealth } from "~/server/stations/health";
 
-const USE_MOCK = process.env.USE_MOCK?.toLowerCase() !== "false";
-
-console.log("USE_MOCK environment variable:", JSON.stringify(process.env.USE_MOCK));
-console.log("USE_MOCK toLowerCase:", JSON.stringify(process.env.USE_MOCK?.toLowerCase()));
-console.log("USE_MOCK !== 'false':", process.env.USE_MOCK?.toLowerCase() !== "false");
-console.log("USE_MOCK evaluated to:", USE_MOCK);
-console.log("AI_PROVIDER:", process.env.AI_PROVIDER);
+const USE_MOCK = process.env.USE_MOCK?.trim().toLowerCase() !== "false";
 
 const BASE_STATIONS: Record<string, Station[]> = {
   "aurora-trails": [
@@ -526,13 +520,10 @@ function selectMockScene(request: RecommendRequest): MockSceneDefinition {
 async function resolveDescriptor(
   request: RecommendRequest
 ): Promise<SceneDescriptor> {
-  console.log("resolveDescriptor called with USE_MOCK:", USE_MOCK);
   if (USE_MOCK) {
-    console.log("Using mock data");
     return toSceneDescriptor(selectMockScene(request));
   }
 
-  console.log("Using real AI provider");
   const provider = getProvider();
   const prompt =
     request.prompt ??
