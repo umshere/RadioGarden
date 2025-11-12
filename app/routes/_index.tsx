@@ -157,6 +157,8 @@ export default function Index() {
     navigate,
     selectedCountry,
     stations,
+    favoriteStationIds,
+    recentStations,
     setHasDismissedPlayer,
     setIsQuickRetuneOpen,
     setActiveCardIndex,
@@ -200,8 +202,25 @@ export default function Index() {
       mode.setListeningMode("world");
 
       try {
+        const favoriteIds = Array.from(favoriteStationIds);
+        const recentIds = recentStations.map((station) => station.uuid);
+        const countryContext = selectedCountry ?? player.nowPlaying?.country ?? null;
+        const languageContext = player.nowPlaying?.language ?? null;
+
         const response = await callAiOrchestrator(
-          { mood, transcript },
+          {
+            mood,
+            transcript,
+            visual: "card_stack",
+            sceneId: "card_stack",
+            country: countryContext,
+            language: languageContext,
+            preferredCountries: countryContext ? [countryContext] : undefined,
+            preferredLanguages: languageContext ? [languageContext] : undefined,
+            favoriteStationIds: favoriteIds,
+            recentStationIds: recentIds,
+            currentStationId: player.nowPlaying?.uuid ?? null,
+          },
           { signal: abortController.signal }
         );
 
@@ -255,7 +274,14 @@ export default function Index() {
         }
       }
     },
-    [mode, handleWorldMoodRefresh]
+    [
+      mode,
+      handleWorldMoodRefresh,
+      favoriteStationIds,
+      recentStations,
+      selectedCountry,
+      player.nowPlaying,
+    ]
   );
 
   const handleToggleFavorite = useCallback((station: Station) => {

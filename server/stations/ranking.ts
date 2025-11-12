@@ -3,6 +3,13 @@ import type { Station } from "~/types/radio";
 export type IntentMeta = {
   prompt?: string | null;
   mood?: string | null;
+  preferredCountries?: string[];
+  preferredLanguages?: string[];
+  preferredTags?: string[];
+  favoriteStationIds?: string[];
+  recentStationIds?: string[];
+  dislikedStationIds?: string[];
+  currentStationId?: string | null;
 };
 
 const LANGUAGE_ALIASES: Record<string, string[]> = {
@@ -35,6 +42,24 @@ const WEIGHTS = {
   languageMatch: 3,
   bitrate: 0.02,
   vote: 0.01,
+  preferredCountry: 6,
+  preferredLanguage: 4,
+  preferredTag: 6,
+  favoriteBoost: 14,
+  recentBoost: 5,
+  dislikePenalty: -16,
+  repeatPenalty: -4,
+};
+
+type ScoringContext = {
+  tokens: string[];
+  preferredCountries: Set<string>;
+  preferredLanguages: Set<string>;
+  preferredTags: Set<string>;
+  favoriteStationIds: Set<string>;
+  recentStationIds: Set<string>;
+  dislikedStationIds: Set<string>;
+  currentStationId?: string | null;
 };
 
 function normalize(value: string | null | undefined) {
@@ -50,7 +75,7 @@ function tokenize(...values: Array<string | null | undefined>) {
     .filter((token) => token.length > 1);
 }
 
-function scoreStation(station: Station, tokens: string[]): number {
+function scoreStation(station: Station, context: ScoringContext): number {
   let score = 0;
 
   const tags = new Set<string>();
@@ -70,7 +95,7 @@ function scoreStation(station: Station, tokens: string[]): number {
   const country = normalize(station.country);
   const language = normalize(station.language);
 
-  for (const token of tokens) {
+  for (const token of context.tokens) {
     if (tags.has(token)) {
       score += WEIGHTS.tagMatch;
     }
@@ -99,6 +124,33 @@ function scoreStation(station: Station, tokens: string[]): number {
     }
   }
 
+  if (context.preferredCountries.has(country)) {
+    score += WEIGHTS.preferredCountry;
+  }
+  if (context.preferredLanguages.has(language)) {
+    score += WEIGHTS.preferredLanguage;
+  }
+  if (context.preferredTags.size > 0 && tags.size > 0) {
+    for (const tag of tags) {
+      if (context.preferredTags.has(tag)) {
+        score += WEIGHTS.preferredTag;
+      }
+    }
+  }
+
+  if (station.uuid && context.favoriteStationIds.has(station.uuid)) {
+    score += WEIGHTS.favoriteBoost;
+  }
+  if (station.uuid && context.recentStationIds.has(station.uuid)) {
+    score += WEIGHTS.recentBoost;
+  }
+  if (station.uuid && context.dislikedStationIds.has(station.uuid)) {
+    score += WEIGHTS.dislikePenalty;
+  }
+  if (station.uuid && context.currentStationId && station.uuid === context.currentStationId) {
+    score += WEIGHTS.repeatPenalty;
+  }
+
   if (typeof station.bitrate === "number") {
     score += station.bitrate * WEIGHTS.bitrate;
   }
@@ -118,9 +170,32 @@ export function rankStations(
   }
 
   const tokens = tokenize(intentMeta.prompt, intentMeta.mood);
+  const preferredCountries = new Set(
+    (intentMeta.preferredCountries ?? []).map((value) => value.toLowerCase())
+  );
+  const preferredLanguages = new Set(
+    (intentMeta.preferredLanguages ?? []).map((value) => value.toLowerCase())
+  );
+  const preferredTags = new Set(
+    (intentMeta.preferredTags ?? []).map((value) => value.toLowerCase())
+  );
+  const favoriteStationIds = new Set(intentMeta.favoriteStationIds ?? []);
+  const recentStationIds = new Set(intentMeta.recentStationIds ?? []);
+  const dislikedStationIds = new Set(intentMeta.dislikedStationIds ?? []);
+
+  const context: ScoringContext = {
+    tokens,
+    preferredCountries,
+    preferredLanguages,
+    preferredTags,
+    favoriteStationIds,
+    recentStationIds,
+    dislikedStationIds,
+    currentStationId: intentMeta.currentStationId ?? null,
+  };
 
   return [...stations]
-    .map((station) => ({ station, score: scoreStation(station, tokens) }))
+    .map((station) => ({ station, score: scoreStation(station, context) }))
     .sort((a, b) => b.score - a.score)
     .map((entry) => entry.station);
 }

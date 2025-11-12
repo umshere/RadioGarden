@@ -31,6 +31,7 @@ type PlayerState = {
   applySceneDescriptor: (descriptor: SceneDescriptor) => Station | null;
   startStation: (station: Station, options?: StartStationOptions) => void;
   togglePlay: () => void;
+  playPause: () => void;
   stop: () => void;
 };
 
@@ -204,6 +205,20 @@ export const usePlayerStore = create<PlayerState>(
         }
       },
       togglePlay: () => {
+        const audio = get().audioElement;
+        if (!audio) return;
+
+        if (audio.paused) {
+          void audio
+            .play()
+            .then(() => set({ isPlaying: true }))
+            .catch(() => set({ isPlaying: false }));
+        } else {
+          audio.pause();
+          set({ isPlaying: false });
+        }
+      },
+      playPause: () => {
         const audio = get().audioElement;
         if (!audio) return;
 

@@ -1,5 +1,10 @@
 import { parseSceneDescriptor } from "./sceneDescriptorParser";
-import type { AiProvider } from "./BaseProvider";
+import type { AiProvider, ProviderSceneContext, ProviderSceneIntent } from "./BaseProvider";
+import {
+  dedupeStations,
+  filterStationCandidates,
+  normalizePreferenceList,
+} from "./providerUtils";
 import type { SceneDescriptor } from "~/scenes/types";
 import type { Station } from "~/types/radio";
 import { rbFetchJson } from "~/utils/radioBrowser";
@@ -7,10 +12,10 @@ import { normalizeStations } from "~/utils/stations";
 
 const OPTIMIZED_MODEL_ROTATION = [
   "meta-llama/llama-3.3-8b-instruct:free",
+  "google/gemma-3n-4b-it:free",
   "mistralai/mistral-7b-instruct:free",
-  "google/gemma-7b-it:free",
-  "microsoft/wizardlm-2-8x22b:free",
-  "meta-llama/llama-3.2-3b-instruct:free",
+  "openai/gpt-oss-20b:free",
+  "nvidia/nemotron-2-12b-vl:free",
 ];
 
 const SYSTEM_PROMPT = `You are Radio Passport's music curator. Create a card_stack scene JSON.
@@ -38,22 +43,66 @@ export class OpenRouterProvider implements AiProvider {
     }
   }
 
-  private async fetchAvailableStations(limit: number = 60): Promise<Station[]> {
-    try {
-      const rawStations = await rbFetchJson<unknown>(
-        `/json/stations/search?limit=${limit}&hidebroken=true&order=clickcount&reverse=true&has_geo_info=true`
-      );
+  private async fetchAvailableStations(
+    limit: number = 60,
+    intent?: ProviderSceneIntent
+  ): Promise<Station[]> {
+    const baseStations = await this.fetchAndFilter(
+      `/json/stations/search?limit=${limit}&hidebroken=true&order=clickcount&reverse=true&has_geo_info=true`
+    );
 
+    const targeted: Station[] = [];
+    const preferredCountries = normalizePreferenceList(intent?.preferredCountries);
+    const preferredLanguages = normalizePreferenceList(intent?.preferredLanguages);
+    const preferredTags = normalizePreferenceList(intent?.preferredTags);
+
+    for (const country of preferredCountries.slice(0, 2)) {
+      targeted.push(
+        ...(
+          await this.fetchAndFilter(
+            `/json/stations/bycountry/${encodeURIComponent(
+              country
+            )}?limit=30&hidebroken=true&order=clickcount&reverse=true`
+          )
+        )
+      );
+    }
+
+    for (const language of preferredLanguages.slice(0, 2)) {
+      targeted.push(
+        ...(
+          await this.fetchAndFilter(
+            `/json/stations/bylanguage/${encodeURIComponent(
+              language
+            )}?limit=30&hidebroken=true&order=clickcount&reverse=true`
+          )
+        )
+      );
+    }
+
+    for (const tag of preferredTags.slice(0, 3)) {
+      targeted.push(
+        ...(
+          await this.fetchAndFilter(
+            `/json/stations/bytag/${encodeURIComponent(
+              tag
+            )}?limit=30&hidebroken=true&order=clickcount&reverse=true`
+          )
+        )
+      );
+    }
+
+    const combined = dedupeStations([...targeted, ...baseStations]);
+    return combined.slice(0, limit);
+  }
+
+  private async fetchAndFilter(path: string): Promise<Station[]> {
+    try {
+      const rawStations = await rbFetchJson<unknown>(path);
       const stations = normalizeStations(
         Array.isArray(rawStations) ? rawStations : []
       );
-
-      return stations.filter(
-        (station) =>
-          station.isStreamHealthy !== false &&
-          station.bitrate >= 64 &&
-          station.streamUrl
-      );
+      return filterStationCandidates(stations);
     } catch (error) {
       console.error("Failed to fetch stations from Radio Browser:", error);
       return [];
@@ -72,8 +121,11 @@ export class OpenRouterProvider implements AiProvider {
       .join("\n");
   }
 
-  async getSceneDescriptor(prompt: string): Promise<SceneDescriptor> {
-    const availableStations = await this.fetchAvailableStations();
+  async getSceneDescriptor(
+    prompt: string,
+    context?: ProviderSceneContext
+  ): Promise<SceneDescriptor> {
+    const availableStations = await this.fetchAvailableStations(60, context?.intent);
     if (availableStations.length === 0) {
       throw new Error("No stations available from Radio Browser");
     }

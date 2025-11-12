@@ -15,6 +15,17 @@ export async function callAiOrchestrator(
     prompt: payload.transcript,
     mood: payload.mood,
     visual: payload.visual,
+    scene: payload.sceneId,
+    sceneId: payload.sceneId,
+    country: payload.country ?? null,
+    language: payload.language ?? null,
+    preferredCountries: payload.preferredCountries,
+    preferredLanguages: payload.preferredLanguages,
+    preferredTags: payload.preferredTags,
+    favoriteStationIds: payload.favoriteStationIds,
+    recentStationIds: payload.recentStationIds,
+    dislikedStationIds: payload.dislikedStationIds,
+    currentStationId: payload.currentStationId ?? null,
   };
 
   const response = await fetch("/api/ai/recommend", {

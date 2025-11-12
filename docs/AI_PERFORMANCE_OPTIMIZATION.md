@@ -1,4 +1,6 @@
-# AI Performance Optimization
+# AI Performance Optimization *(legacy)*
+
+> **Note:** This document captures the 2023–24 context-size reductions. For the current pipeline (intent extraction + catalogue workflow) see `docs/AI_PIPELINE.md`.
 
 ## Problem
 
@@ -10,11 +12,13 @@ API calls were taking 30-60+ seconds because we were sending too much context to
 
 ## Solution
 
+> **April 2025 Update:** Real-time AI recommendations are now the default. Set `USE_MOCK=true` locally if you need the legacy static scenes.
+
 ### 1. Reduced Station Count
 
 - **Before**: 100 stations
-- **After**: 40 stations
-- **Rationale**: AI only needs 6-8 stations; 40 gives enough variety
+- **After**: 60 fetched, only the top 20 make it into the prompt
+- **Rationale**: AI still gets 2-3× more options than it needs, while allowing us to inject region/language targeted stations ahead of the global pool
 
 ### 2. Compact Format
 
@@ -76,10 +80,10 @@ private buildStationContext(stations: Station[]): string {
   return stations
     .slice(0, 40) // Was 100
     .map((station, idx) => {
-      const tags = station.tagList?.slice(0, 4).join(",") || "none";
-      return `${idx + 1}. ${station.name} [${station.uuid}] - ${station.country} | ${tags} | ${station.bitrate}kbps`;
+      const tags = station.tagList?.slice(0, 3).join(",") || "none";
+      return `${idx + 1}. ${station.name} [${station.uuid}]|${station.country}|${tags}|${station.bitrate}k`;
     })
-    .join("\n"); // Was "\n\n"
+    .join("\n");
 }
 ```
 

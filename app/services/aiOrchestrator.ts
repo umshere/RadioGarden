@@ -14,6 +14,14 @@ type LoadWorldDescriptorOptions = {
   prompt?: string;
   mood?: string;
   visual?: string;
+  sceneId?: string;
+  country?: string | null;
+  language?: string | null;
+  preferredCountries?: string[];
+  preferredLanguages?: string[];
+  favoriteStationIds?: string[];
+  recentStationIds?: string[];
+  dislikedStationIds?: string[];
   currentStationId?: string | null;
   onStationsResolved?: (stations: Station[]) => void;
   onStartStation?: (station: Station, options: { autoPlay: boolean }) => void;
@@ -46,13 +54,48 @@ function parseResponse(payload: unknown): SceneDescriptor {
 }
 
 export async function loadWorldDescriptor(options: LoadWorldDescriptorOptions = {}) {
-  const { signal, prompt, mood, visual, onStationsResolved, onStartStation } = options;
+  const {
+    signal,
+    prompt,
+    mood,
+    visual,
+    sceneId,
+    country,
+    language,
+    preferredCountries,
+    preferredLanguages,
+    favoriteStationIds,
+    recentStationIds,
+    dislikedStationIds,
+    currentStationId,
+    onStationsResolved,
+    onStartStation,
+  } = options;
   const usePost = typeof prompt === "string" && prompt.trim().length > 0;
   const query = new URLSearchParams();
 
   if (!usePost) {
     if (mood) query.set("mood", mood);
     if (visual) query.set("visual", visual);
+    if (sceneId) query.set("sceneId", sceneId);
+    if (country) query.set("country", country);
+    if (language) query.set("language", language);
+    if (currentStationId) query.set("currentStationId", currentStationId);
+    for (const entry of preferredCountries ?? []) {
+      query.append("preferredCountries", entry);
+    }
+    for (const entry of preferredLanguages ?? []) {
+      query.append("preferredLanguages", entry);
+    }
+    for (const entry of favoriteStationIds ?? []) {
+      query.append("favoriteStationIds", entry);
+    }
+    for (const entry of recentStationIds ?? []) {
+      query.append("recentStationIds", entry);
+    }
+    for (const entry of dislikedStationIds ?? []) {
+      query.append("dislikedStationIds", entry);
+    }
   }
 
   const endpoint = usePost
@@ -73,6 +116,15 @@ export async function loadWorldDescriptor(options: LoadWorldDescriptorOptions = 
           prompt,
           mood,
           visual,
+          sceneId,
+          country,
+          language,
+          preferredCountries,
+          preferredLanguages,
+          favoriteStationIds,
+          recentStationIds,
+          dislikedStationIds,
+          currentStationId,
         })
       : undefined,
     signal,

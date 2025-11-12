@@ -1,5 +1,10 @@
 import { parseSceneDescriptor } from "./sceneDescriptorParser";
-import type { AiProvider } from "./BaseProvider";
+import type { AiProvider, ProviderSceneContext, ProviderSceneIntent } from "./BaseProvider";
+import {
+  dedupeStations,
+  filterStationCandidates,
+  normalizePreferenceList,
+} from "./providerUtils";
 import type { SceneDescriptor } from "~/scenes/types";
 import type { Station } from "~/types/radio";
 import { rbFetchJson } from "~/utils/radioBrowser";
@@ -31,23 +36,65 @@ export class OllamaProvider implements AiProvider {
   }
 
   private async fetchAvailableStations(
-    limit: number = 60 // Further reduced for speed
+    limit: number = 60,
+    intent?: ProviderSceneIntent
   ): Promise<Station[]> {
-    try {
-      const rawStations = await rbFetchJson<unknown>(
-        `/json/stations/search?limit=${limit}&hidebroken=true&order=clickcount&reverse=true&has_geo_info=true`
-      );
+    const baseStations = await this.fetchAndFilter(
+      `/json/stations/search?limit=${limit}&hidebroken=true&order=clickcount&reverse=true&has_geo_info=true`
+    );
 
+    const targeted: Station[] = [];
+    const preferredCountries = normalizePreferenceList(intent?.preferredCountries);
+    const preferredLanguages = normalizePreferenceList(intent?.preferredLanguages);
+    const preferredTags = normalizePreferenceList(intent?.preferredTags);
+
+    for (const country of preferredCountries.slice(0, 2)) {
+      targeted.push(
+        ...(
+          await this.fetchAndFilter(
+            `/json/stations/bycountry/${encodeURIComponent(
+              country
+            )}?limit=30&hidebroken=true&order=clickcount&reverse=true`
+          )
+        )
+      );
+    }
+
+    for (const language of preferredLanguages.slice(0, 2)) {
+      targeted.push(
+        ...(
+          await this.fetchAndFilter(
+            `/json/stations/bylanguage/${encodeURIComponent(
+              language
+            )}?limit=30&hidebroken=true&order=clickcount&reverse=true`
+          )
+        )
+      );
+    }
+
+    for (const tag of preferredTags.slice(0, 3)) {
+      targeted.push(
+        ...(
+          await this.fetchAndFilter(
+            `/json/stations/bytag/${encodeURIComponent(
+              tag
+            )}?limit=30&hidebroken=true&order=clickcount&reverse=true`
+          )
+        )
+      );
+    }
+
+    const combined = dedupeStations([...targeted, ...baseStations]);
+    return combined.slice(0, limit);
+  }
+
+  private async fetchAndFilter(path: string): Promise<Station[]> {
+    try {
+      const rawStations = await rbFetchJson<unknown>(path);
       const stations = normalizeStations(
         Array.isArray(rawStations) ? rawStations : []
       );
-
-      return stations.filter(
-        (station) =>
-          station.isStreamHealthy !== false &&
-          station.bitrate >= 64 &&
-          station.streamUrl
-      );
+      return filterStationCandidates(stations);
     } catch (error) {
       console.error("Failed to fetch stations from Radio Browser:", error);
       return [];
@@ -67,8 +114,11 @@ export class OllamaProvider implements AiProvider {
       .join("\n");
   }
 
-  async getSceneDescriptor(prompt: string): Promise<SceneDescriptor> {
-    const availableStations = await this.fetchAvailableStations();
+  async getSceneDescriptor(
+    prompt: string,
+    context?: ProviderSceneContext
+  ): Promise<SceneDescriptor> {
+    const availableStations = await this.fetchAvailableStations(60, context?.intent);
 
     if (availableStations.length === 0) {
       throw new Error("No stations available from Radio Browser");

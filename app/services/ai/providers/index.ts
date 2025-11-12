@@ -11,7 +11,9 @@ export function getProvider(): AiProvider {
     return providerCache.instance;
   }
 
-  const providerName = (process.env.AI_PROVIDER ?? "openai").trim().toLowerCase();
+  const providerName = (process.env.AI_PROVIDER ?? "openai")
+    .trim()
+    .toLowerCase();
 
   switch (providerName) {
     case "gemini": {

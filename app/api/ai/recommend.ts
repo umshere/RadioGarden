@@ -6,10 +6,27 @@ import {
 import type { PlaybackStrategy, SceneDescriptor } from "~/scenes/types";
 import type { Station } from "~/types/radio";
 import { getProvider } from "~/services/ai/providers";
-import { rankStations } from "~/server/stations/ranking";
+import { rankStations, type IntentMeta } from "~/server/stations/ranking";
 import { annotateHealth } from "~/server/stations/health";
+import { rbFetchJson } from "~/utils/radioBrowser";
+import { normalizeStations } from "~/utils/stations";
+import { filterStationCandidates } from "~/services/ai/providers/providerUtils";
+import { extractPromptIntent } from "~/services/ai/intent/promptIntent";
 
-const USE_MOCK = process.env.USE_MOCK?.trim().toLowerCase() !== "false";
+const USE_MOCK = process.env.USE_MOCK?.trim().toLowerCase() === "true";
+
+const LANGUAGE_CODE_TO_NAME: Record<string, string> = {
+  ta: "tamil",
+  ml: "malayalam",
+  hi: "hindi",
+  kn: "kannada",
+  te: "telugu",
+  pa: "punjabi",
+  bn: "bengali",
+  mr: "marathi",
+  gu: "gujarati",
+  ur: "urdu",
+};
 
 const BASE_STATIONS: Record<string, Station[]> = {
   "aurora-trails": [
@@ -368,6 +385,16 @@ type RecommendRequest = {
   mood?: string | null;
   visual?: string | null;
   scene?: string | null;
+  sceneId?: string | null;
+  country?: string | null;
+  language?: string | null;
+  preferredCountries?: string[];
+  preferredLanguages?: string[];
+  preferredTags?: string[];
+  favoriteStationIds?: string[];
+  recentStationIds?: string[];
+  dislikedStationIds?: string[];
+  currentStationId?: string | null;
 };
 
 type AiRecommendationResponse = {
@@ -438,6 +465,48 @@ const DESCRIPTORS: MockSceneDefinition[] = [
     reason: "Sunrise jazz, coastal city pop, and warm atlantic breezes",
   },
 ];
+
+function normalizeString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeStringList(value: unknown): string[] {
+  const collected: string[] = [];
+
+  function collect(entry: unknown) {
+    if (entry == null) return;
+    if (Array.isArray(entry)) {
+      entry.forEach(collect);
+      return;
+    }
+
+    const parts = String(entry)
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part): part is string => part.length > 0);
+
+    collected.push(...parts);
+  }
+
+  collect(value);
+  return Array.from(new Set(collected));
+}
+
+function buildPreferredList(
+  primary: string | null,
+  secondary: string | null,
+  extras: string[] | undefined
+): string[] {
+  return Array.from(
+    new Set(
+      [primary, secondary, ...(extras ?? [])]
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+}
 
 function mapPlaybackStrategy(value: string): PlaybackStrategy {
   switch (value) {
@@ -517,11 +586,22 @@ function selectMockScene(request: RecommendRequest): MockSceneDefinition {
   );
 }
 
+const INTENT_MIN_MATCHES = 4;
+const INTENT_SUPPLEMENT_LIMIT = 60;
+const RELATED_LANGUAGES: Record<string, string[]> = {
+  malayalam: ["tamil", "telugu", "kannada"],
+  tamil: ["malayalam", "telugu", "kannada"],
+  telugu: ["tamil", "malayalam", "kannada"],
+  kannada: ["tamil", "malayalam", "telugu"],
+  hindi: ["marathi", "punjabi", "gujarati"],
+};
+
 async function resolveDescriptor(
   request: RecommendRequest
 ): Promise<SceneDescriptor> {
+  const fallbackDescriptor = () => toSceneDescriptor(selectMockScene(request));
   if (USE_MOCK) {
-    return toSceneDescriptor(selectMockScene(request));
+    return fallbackDescriptor();
   }
 
   const provider = getProvider();
@@ -531,23 +611,152 @@ async function resolveDescriptor(
     request.scene ??
     request.visual ??
     "Curate a transportive radio journey with mood, animation, and stations.";
-  const descriptor = await provider.getSceneDescriptor(prompt);
+  try {
+    const descriptor = await provider.getSceneDescriptor(prompt, {
+      intent: buildProviderIntent(request),
+    });
 
+    return {
+      ...descriptor,
+      play: descriptor.play ?? { strategy: "autoplay_first" },
+    };
+  } catch (error) {
+    console.error("AI provider failed, falling back to mock descriptor", error);
+    return fallbackDescriptor();
+  }
+}
+
+function buildProviderIntent(request: RecommendRequest) {
   return {
-    ...descriptor,
-    play: descriptor.play ?? { strategy: "autoplay_first" },
+    preferredCountries: buildPreferredList(
+      request.country ?? null,
+      null,
+      request.preferredCountries
+    ),
+    preferredLanguages: buildPreferredList(
+      request.language ?? null,
+      null,
+      request.preferredLanguages
+    ),
+    preferredTags: normalizeStringList(request.preferredTags ?? []),
+    favoriteStationIds: request.favoriteStationIds ?? [],
+    recentStationIds: request.recentStationIds ?? [],
   };
 }
 
-function applyPostProcessing(
-  descriptor: SceneDescriptor,
-  request: RecommendRequest
-): SceneDescriptor {
-  const ranked = rankStations(descriptor.stations, {
+function buildRankingIntent(request: RecommendRequest): IntentMeta {
+  return {
     prompt: request.prompt ?? null,
     mood: request.mood ?? null,
+    preferredCountries: buildPreferredList(
+      request.country ?? null,
+      null,
+      request.preferredCountries
+    ),
+    preferredLanguages: buildPreferredList(
+      request.language ?? null,
+      null,
+      request.preferredLanguages
+    ),
+    favoriteStationIds: request.favoriteStationIds ?? [],
+    recentStationIds: request.recentStationIds ?? [],
+    dislikedStationIds: request.dislikedStationIds ?? [],
+    currentStationId: request.currentStationId ?? null,
+    preferredTags: normalizeStringList(request.preferredTags ?? []),
+  };
+}
+
+function readSearchList(params: URLSearchParams, key: string): string[] {
+  const values = params.getAll(key);
+  if (values.length > 0) {
+    return normalizeStringList(values);
+  }
+  return normalizeStringList(params.get(key));
+}
+
+function readFormList(formData: FormData, key: string): string[] {
+  const values = formData.getAll(key);
+  if (values.length === 0) return [];
+  return normalizeStringList(values.map((value) => value?.toString() ?? ""));
+}
+
+function finalizeRequest(partial: Partial<RecommendRequest>): RecommendRequest {
+  return {
+    prompt: partial.prompt ?? null,
+    mood: partial.mood ?? null,
+    visual: partial.visual ?? null,
+    scene: partial.scene ?? null,
+    sceneId: partial.sceneId ?? null,
+    country: partial.country ?? null,
+    language: partial.language ?? null,
+    preferredCountries: normalizeStringList(partial.preferredCountries ?? []),
+    preferredLanguages: normalizeStringList(partial.preferredLanguages ?? []),
+    preferredTags: normalizeStringList(partial.preferredTags ?? []),
+    favoriteStationIds: normalizeStringList(partial.favoriteStationIds ?? []),
+    recentStationIds: normalizeStringList(partial.recentStationIds ?? []),
+    dislikedStationIds: normalizeStringList(partial.dislikedStationIds ?? []),
+    currentStationId: partial.currentStationId ?? null,
+  };
+}
+
+function enrichRequestWithIntent(request: RecommendRequest): RecommendRequest {
+  if (!request.prompt) {
+    return request;
+  }
+
+  const intent = extractPromptIntent(request.prompt);
+  if (intent.confidence === "none" || intent.confidence === "low") {
+    return request;
+  }
+
+  const preferredCountries = buildPreferredList(
+    request.country ?? null,
+    null,
+    [...(request.preferredCountries ?? []), ...intent.countries]
+  );
+
+  const preferredLanguages = buildPreferredList(
+    request.language ?? null,
+    null,
+    [...(request.preferredLanguages ?? []), ...intent.languages]
+  );
+
+  const country = request.country ?? intent.countries[0] ?? null;
+  const language = request.language ?? intent.languages[0] ?? null;
+  const preferredTags = normalizeStringList([
+    ...(request.preferredTags ?? []),
+    ...intent.tags,
+  ]);
+
+  return {
+    ...request,
+    country,
+    language,
+    preferredCountries,
+    preferredLanguages,
+    preferredTags,
+  };
+}
+
+async function applyPostProcessing(
+  descriptor: SceneDescriptor,
+  request: RecommendRequest
+): Promise<SceneDescriptor> {
+  const intent = buildRankingIntent(request);
+  const ranked = rankStations(descriptor.stations, buildRankingIntent(request));
+  const intentAdjusted = await ensureIntentCoverage(ranked, intent);
+  const withHealth = annotateHealth(intentAdjusted);
+
+  console.info("descriptor-stations", {
+    prompt: request.prompt,
+    stations: withHealth.map((station) => ({
+      uuid: station.uuid,
+      name: station.name,
+      country: station.country,
+      language: station.language,
+      tags: station.tagList?.slice(0, 5) ?? [],
+    })),
   });
-  const withHealth = annotateHealth(ranked);
 
   return {
     ...descriptor,
@@ -571,20 +780,303 @@ function buildResponse(descriptor: SceneDescriptor) {
   });
 }
 
+function hasIntentSignals(intent: IntentMeta): boolean {
+  return Boolean(
+    (intent.preferredCountries?.length ?? 0) ||
+      (intent.preferredLanguages?.length ?? 0) ||
+      (intent.preferredTags?.length ?? 0)
+  );
+}
+
+function stationMatchesIntent(station: Station, intent: IntentMeta): boolean {
+  const country = (station.country ?? "").toLowerCase();
+  const languageValues = new Set<string>();
+  if (station.language) {
+    languageValues.add(station.language.toLowerCase());
+  }
+  if (station.languageCodes) {
+    for (const code of station.languageCodes) {
+      if (code) languageValues.add(code.toLowerCase());
+      const canonical = LANGUAGE_CODE_TO_NAME[code.toLowerCase()];
+      if (canonical) {
+        languageValues.add(canonical);
+      }
+    }
+  }
+
+  const tags = new Set<string>();
+  if (station.tagList) {
+    for (const tag of station.tagList) {
+      if (tag) tags.add(tag.toLowerCase());
+    }
+  }
+  if (typeof station.tags === "string") {
+    station.tags
+      .split(",")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean)
+      .forEach((tag) => tags.add(tag));
+  }
+
+  const matchesCountry = (intent.preferredCountries ?? []).some((value) =>
+    country.includes(value.toLowerCase())
+  );
+  const matchesLanguage = (intent.preferredLanguages ?? []).some((value) => {
+    const normalized = value.toLowerCase();
+    return Array.from(languageValues).some((candidate) => {
+      if (candidate === normalized) return true;
+      if (candidate.length === 2 && LANGUAGE_CODE_TO_NAME[candidate] === normalized)
+        return true;
+      return normalized.startsWith(candidate) || candidate.startsWith(normalized);
+    });
+  });
+  const matchesTag = (intent.preferredTags ?? []).some((value) =>
+    tags.has(value.toLowerCase())
+  );
+
+  return matchesCountry || matchesLanguage || matchesTag;
+}
+
+function buildRelatedLanguageSet(intent: IntentMeta): Set<string> {
+  const related = new Set<string>();
+  for (const language of intent.preferredLanguages ?? []) {
+    const normalized = language.toLowerCase();
+    const siblings = RELATED_LANGUAGES[normalized];
+    if (siblings) {
+      siblings.forEach((sibling) => related.add(sibling));
+    }
+  }
+  return related;
+}
+
+function stationMatchesRelated(
+  station: Station,
+  intent: IntentMeta,
+  relatedLanguages: Set<string>
+): boolean {
+  if (relatedLanguages.size === 0) return false;
+  const languageValues = new Set<string>();
+  if (station.language) {
+    languageValues.add(station.language.toLowerCase());
+  }
+  if (station.languageCodes) {
+    for (const code of station.languageCodes) {
+      if (code) {
+        const normalized = code.toLowerCase();
+        languageValues.add(normalized);
+        const canonical = LANGUAGE_CODE_TO_NAME[normalized];
+        if (canonical) languageValues.add(canonical);
+      }
+    }
+  }
+
+  for (const candidate of languageValues) {
+    for (const related of relatedLanguages) {
+      if (candidate === related) return true;
+      if (candidate.startsWith(related) || related.startsWith(candidate)) {
+        return true;
+      }
+    }
+  }
+
+  const country = (station.country ?? "").toLowerCase();
+  const matchesCountry = (intent.preferredCountries ?? []).some((value) =>
+    country.includes(value.toLowerCase())
+  );
+  return matchesCountry;
+}
+
+async function ensureIntentCoverage(
+  stations: Station[],
+  intent: IntentMeta
+): Promise<Station[]> {
+  if (!hasIntentSignals(intent) || stations.length === 0) {
+    return stations;
+  }
+
+  const desiredMatches = Math.min(INTENT_MIN_MATCHES, stations.length);
+  const currentMatches = stations.filter((station) =>
+    stationMatchesIntent(station, intent)
+  );
+
+  console.info("intent-coverage", {
+    prompt: intent.prompt,
+    preferredCountries: intent.preferredCountries,
+    preferredLanguages: intent.preferredLanguages,
+    preferredTags: intent.preferredTags,
+    currentMatches: currentMatches.length,
+    desiredMatches,
+    totalStations: stations.length,
+  });
+
+  if (currentMatches.length >= desiredMatches) {
+    return stations;
+  }
+
+  const supplemental = await fetchIntentStations(intent, INTENT_SUPPLEMENT_LIMIT);
+  if (supplemental.length === 0) {
+    console.info("intent-coverage", {
+      prompt: intent.prompt,
+      supplementalFetched: 0,
+    });
+    return stations;
+  }
+
+  const existingIds = new Set(stations.map((station) => station.uuid));
+  const merged = [...stations];
+  for (const station of supplemental) {
+    if (!station?.uuid || existingIds.has(station.uuid)) continue;
+    merged.push(station);
+    existingIds.add(station.uuid);
+  }
+
+  const reranked = rankStations(merged, intent);
+  const relatedLanguages = shouldUseRelatedFallback(intent)
+    ? buildRelatedLanguageSet(intent)
+    : new Set<string>();
+  const primaryMatches: Station[] = [];
+  const relatedMatches: Station[] = [];
+  const secondary: Station[] = [];
+  const seenPinned = new Set<string>();
+  for (const station of reranked) {
+    if (stationMatchesIntent(station, intent)) {
+      primaryMatches.push(station);
+      seenPinned.add(station.uuid);
+    } else if (
+      relatedLanguages.size > 0 &&
+      stationMatchesRelated(station, intent, relatedLanguages)
+    ) {
+      relatedMatches.push(station);
+    } else {
+      secondary.push(station);
+    }
+  }
+  const pinned: Station[] = [];
+  for (const station of primaryMatches) {
+    if (pinned.length >= desiredMatches) break;
+    pinned.push(station);
+  }
+  if (pinned.length < desiredMatches) {
+    const needed = desiredMatches - pinned.length;
+    pinned.push(...relatedMatches.slice(0, needed));
+  }
+  const remainder: Station[] = [];
+  const used = new Set(pinned.map((station) => station.uuid));
+  for (const station of [...primaryMatches.slice(pinned.length), ...relatedMatches, ...secondary]) {
+    if (!station?.uuid || used.has(station.uuid)) continue;
+    remainder.push(station);
+    used.add(station.uuid);
+    if (pinned.length + remainder.length >= stations.length) break;
+  }
+  const finalStations = [...pinned, ...remainder].slice(0, stations.length);
+
+  console.info("intent-coverage", {
+    prompt: intent.prompt,
+    supplementalFetched: supplemental.length,
+    mergedTotal: merged.length,
+    pinnedCount: pinned.length,
+  });
+  return finalStations;
+}
+
+async function fetchIntentStations(
+  intent: IntentMeta,
+  limit: number
+): Promise<Station[]> {
+  const results: Station[] = [];
+  const seen = new Set<string>();
+
+  const pushStations = (list: Station[]) => {
+    for (const station of list) {
+      if (!station?.uuid || seen.has(station.uuid)) continue;
+      seen.add(station.uuid);
+      results.push(station);
+      if (results.length >= limit) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const fetchers: Array<() => Promise<boolean>> = [];
+
+  for (const language of intent.preferredLanguages?.slice(0, 2) ?? []) {
+    fetchers.push(async () => {
+      const stations = await fetchStationPool(
+        `/json/stations/bylanguage/${encodeURIComponent(language)}?limit=60&hidebroken=true&order=clickcount&reverse=true`
+      );
+      return pushStations(stations);
+    });
+  }
+
+  for (const tag of intent.preferredTags?.slice(0, 3) ?? []) {
+    fetchers.push(async () => {
+      const stations = await fetchStationPool(
+        `/json/stations/bytag/${encodeURIComponent(tag)}?limit=60&hidebroken=true&order=clickcount&reverse=true`
+      );
+      return pushStations(stations);
+    });
+  }
+
+  for (const country of intent.preferredCountries?.slice(0, 2) ?? []) {
+    fetchers.push(async () => {
+      const stations = await fetchStationPool(
+        `/json/stations/bycountry/${encodeURIComponent(country)}?limit=60&hidebroken=true&order=clickcount&reverse=true`
+      );
+      return pushStations(stations);
+    });
+  }
+
+  for (const fetcher of fetchers) {
+    try {
+      const done = await fetcher();
+      if (done) break;
+    } catch (error) {
+      console.warn("Failed to fetch intent supplement", error);
+    }
+  }
+
+  return results;
+}
+
+async function fetchStationPool(path: string): Promise<Station[]> {
+  const raw = await rbFetchJson<unknown>(path);
+  const normalized = normalizeStations(Array.isArray(raw) ? raw : []);
+  return filterStationCandidates(normalized, { minBitrate: 48 });
+}
+
+function shouldUseRelatedFallback(intent: IntentMeta): boolean {
+  return (intent.preferredLanguages?.length ?? 0) === 1;
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const descriptor = await getRecommendation({
-    prompt: url.searchParams.get("prompt"),
-    mood: url.searchParams.get("mood"),
-    visual: url.searchParams.get("visual"),
-    scene: url.searchParams.get("scene"),
-  });
+  const descriptor = await getRecommendation(
+    enrichRequestWithIntent(
+      finalizeRequest({
+        prompt: url.searchParams.get("prompt"),
+        mood: url.searchParams.get("mood"),
+        visual: url.searchParams.get("visual"),
+        scene: url.searchParams.get("scene"),
+        sceneId: url.searchParams.get("sceneId"),
+      country: url.searchParams.get("country"),
+      language: url.searchParams.get("language"),
+      preferredCountries: readSearchList(url.searchParams, "preferredCountries"),
+      preferredLanguages: readSearchList(url.searchParams, "preferredLanguages"),
+      preferredTags: readSearchList(url.searchParams, "preferredTags"),
+      favoriteStationIds: readSearchList(url.searchParams, "favoriteStationIds"),
+      recentStationIds: readSearchList(url.searchParams, "recentStationIds"),
+      dislikedStationIds: readSearchList(url.searchParams, "dislikedStationIds"),
+        currentStationId: url.searchParams.get("currentStationId"),
+      })
+    )
+  );
 
   return buildResponse(descriptor);
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  let body: RecommendRequest = {};
+  let body: Partial<RecommendRequest> = {};
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     try {
@@ -601,9 +1093,19 @@ export async function action({ request }: ActionFunctionArgs) {
       mood: formData.get("mood")?.toString() ?? null,
       visual: formData.get("visual")?.toString() ?? null,
       scene: formData.get("scene")?.toString() ?? null,
+      sceneId: formData.get("sceneId")?.toString() ?? null,
+      country: formData.get("country")?.toString() ?? null,
+      language: formData.get("language")?.toString() ?? null,
+      preferredCountries: readFormList(formData, "preferredCountries"),
+      preferredLanguages: readFormList(formData, "preferredLanguages"),
+      preferredTags: readFormList(formData, "preferredTags"),
+      favoriteStationIds: readFormList(formData, "favoriteStationIds"),
+      recentStationIds: readFormList(formData, "recentStationIds"),
+      dislikedStationIds: readFormList(formData, "dislikedStationIds"),
+      currentStationId: formData.get("currentStationId")?.toString() ?? null,
     };
   }
 
-  const descriptor = await getRecommendation(body);
+  const descriptor = await getRecommendation(enrichRequestWithIntent(finalizeRequest(body)));
   return buildResponse(descriptor);
 }

@@ -1,4 +1,6 @@
-# Ultra-Compact AI Optimization (v2)
+# Ultra-Compact AI Optimization (v2) *(legacy)*
+
+> **Reference only.** The live AI workflow, station catalogue usage, and model rotation are described in `docs/AI_PIPELINE.md`.
 
 ## Problem
 

@@ -11,6 +11,8 @@ import WhyTheseChip from "~/components/WhyTheseChip";
 import VoiceInput from "~/voice/VoiceInput";
 import type { SceneDescriptor } from "~/scenes/types";
 import { usePlayerStore } from "~/state/playerStore";
+import { useFavorites } from "~/hooks/useFavorites";
+import { useRecentStations } from "~/hooks/useRecentStations";
 
 const SCENES = [
   {
@@ -86,6 +88,8 @@ export default function WorldSceneRoute() {
   const [loadingHintIndex, setLoadingHintIndex] = useState(0);
   const startStation = usePlayerStore((state) => state.startStation);
   const nowPlaying = usePlayerStore((state) => state.nowPlaying);
+  const { favoriteStationIds } = useFavorites();
+  const { recentStations } = useRecentStations();
 
   const status: RequestStatus =
     fetcher.state === "submitting" || fetcher.state === "loading"
@@ -117,10 +121,49 @@ export default function WorldSceneRoute() {
       if (payload.prompt) formData.append("prompt", payload.prompt);
       if (payload.mood) formData.append("mood", payload.mood);
       formData.append("visual", scene.visual);
+      formData.append("scene", scene.id);
+      formData.append("sceneId", scene.id);
+
+      const includeListeningContext = !payload.prompt && !payload.mood;
+
+      if (includeListeningContext && nowPlaying?.uuid) {
+        formData.append("currentStationId", nowPlaying.uuid);
+      }
+
+      if (includeListeningContext) {
+        const countryContext = nowPlaying?.country ?? undefined;
+        const languageContext = nowPlaying?.language ?? undefined;
+        if (countryContext) {
+          formData.append("country", countryContext);
+          formData.append("preferredCountries", countryContext);
+        }
+        if (languageContext) {
+          formData.append("language", languageContext);
+          formData.append("preferredLanguages", languageContext);
+        }
+      }
+
+      Array.from(favoriteStationIds).forEach((id) =>
+        formData.append("favoriteStationIds", id)
+      );
+      recentStations.forEach((station) =>
+        formData.append("recentStationIds", station.uuid)
+      );
+
       fetcher.submit(formData, { method: "post", action: "/api/ai/recommend" });
       setLastRequestLabel(payload.prompt ?? payload.mood ?? scene.label);
     },
-    [fetcher, scene.visual, scene.label]
+    [
+      fetcher,
+      scene.visual,
+      scene.label,
+      scene.id,
+      nowPlaying?.uuid,
+      nowPlaying?.country,
+      nowPlaying?.language,
+      favoriteStationIds,
+      recentStations,
+    ]
   );
 
   useEffect(() => {

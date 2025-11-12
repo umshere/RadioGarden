@@ -675,6 +675,20 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
       if (event.altKey || event.metaKey || event.ctrlKey) return;
       if (visibleStations.length === 0) return;
 
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tagName = target.tagName?.toLowerCase();
+        const isEditable = target.isContentEditable;
+        if (
+          tagName === "input" ||
+          tagName === "textarea" ||
+          isEditable ||
+          target.getAttribute("role") === "textbox"
+        ) {
+          return;
+        }
+      }
+
       const forwardKeys = ["ArrowRight", "ArrowDown"];
       const backwardKeys = ["ArrowLeft", "ArrowUp"];
 
@@ -692,7 +706,7 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
       } else if (event.key === "End") {
         event.preventDefault();
         setActiveStation(visibleStations[visibleStations.length - 1]);
-      } else if (event.key === " " || event.key === "Enter") {
+      } else if (event.key === " " || event.key === "Spacebar" || event.key === "Enter") {
         event.preventDefault();
         const target = visibleStations[activeIndex] ?? visibleStations[0];
         setActiveStation(target, { autoplay: true });
@@ -713,7 +727,10 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
     return MOOD_BACKGROUNDS[moodKey] ?? MOOD_BACKGROUNDS.night;
   }, [descriptor.mood]);
 
-  const descriptorReason = descriptor.reason?.trim() || DEFAULT_REASON;
+  const descriptorReason =
+    typeof descriptor.reason === "string" && descriptor.reason.trim().length > 0
+      ? descriptor.reason.trim()
+      : DEFAULT_REASON;
   const totalStations = descriptor.stations.length;
   const countryCount = useMemo(() => {
     const lookup = new Set(

@@ -20,6 +20,8 @@ interface UseEventHandlersProps {
   navigate: NavigateFunction;
   selectedCountry: string | null;
   stations: Station[];
+  favoriteStationIds: Set<string>;
+  recentStations: Station[];
   setHasDismissedPlayer: (dismissed: boolean) => void;
   setIsQuickRetuneOpen: (open: boolean) => void;
   setActiveCardIndex: (index: number) => void;
@@ -46,6 +48,8 @@ export function useEventHandlers({
   navigate,
   selectedCountry,
   stations,
+  favoriteStationIds,
+  recentStations,
   setHasDismissedPlayer,
   setIsQuickRetuneOpen,
   setActiveCardIndex,
@@ -56,7 +60,8 @@ export function useEventHandlers({
 }: UseEventHandlersProps) {
   const setIsFetchingExplore = mode.setIsFetchingExplore;
   const setExploreStations = mode.setExploreStations;
-  const currentStationId = player?.nowPlaying?.uuid ?? null;
+  const nowPlaying = player?.nowPlaying ?? null;
+  const currentStationId = nowPlaying?.uuid ?? null;
 
   const handlePreviewCountryPlay = useCallback(
     async (countryName: string) => {
@@ -187,9 +192,34 @@ export function useEventHandlers({
 
       setIsFetchingExplore(true);
       try {
+        const preferredCountries = Array.from(
+          new Set(
+            [selectedCountry, nowPlaying?.country]
+              .filter((value): value is string => Boolean(value))
+              .map((value) => value.trim())
+          )
+        );
+        const preferredLanguages = Array.from(
+          new Set(
+            [nowPlaying?.language]
+              .filter((value): value is string => Boolean(value))
+              .map((value) => value.trim())
+          )
+        );
+        const favoriteIds = Array.from(favoriteStationIds);
+        const recentIds = recentStations.map((station) => station.uuid);
+
         await loadWorldDescriptor({
           currentStationId: stationId,
           mood,
+          visual: "card_stack",
+          sceneId: "card_stack",
+          country: preferredCountries[0] ?? null,
+          language: preferredLanguages[0] ?? null,
+          preferredCountries,
+          preferredLanguages,
+          favoriteStationIds: favoriteIds,
+          recentStationIds: recentIds,
           onStationsResolved: (stations) => {
             setExploreStations(stations);
           },
@@ -208,6 +238,11 @@ export function useEventHandlers({
     },
     [
       mode.isFetchingExplore,
+      selectedCountry,
+      nowPlaying?.country,
+      nowPlaying?.language,
+      favoriteStationIds,
+      recentStations,
       setIsFetchingExplore,
       setExploreStations,
       setActiveCardIndex,

@@ -58,4 +58,19 @@ describe("rankStations", () => {
     const ranked = rankStations(stations, { prompt: "classical" });
     expect(ranked[0]?.uuid).toBe("b");
   });
+
+  it("boosts preferred countries and favorites", () => {
+    const stations: Station[] = [
+      baseStation({ uuid: "fav", country: "India", bitrate: 64, tagList: ["devotional"] }),
+      baseStation({ uuid: "high", country: "France", bitrate: 320 }),
+    ];
+
+    const ranked = rankStations(stations, {
+      preferredCountries: ["India"],
+      favoriteStationIds: ["fav"],
+      preferredTags: ["devotional"],
+    });
+
+    expect(ranked[0]?.uuid).toBe("fav");
+  });
 });

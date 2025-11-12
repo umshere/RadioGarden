@@ -15,7 +15,18 @@ start.log
 # Scratch/verification files
 jules-scratch/
 
+# Environment files
+.env
+.env*.local
+.env.production
+.env.vercel-production
+.env.verify
+.env.check-provider
+.env.final-check
+.env.prod-check
+
 # VS Code personal settings
+.vscode/settings.json
 .vscode/mcp.json
 
 # Playwright
@@ -25,3 +36,8 @@ jules-scratch/
 /playwright/.cache/
 /playwright/.auth/
 test-results/
+.env*.local
+
+# Generated Radio Browser catalogues
+/data/*.jsonl
+/data/catalogue_stats_*.json

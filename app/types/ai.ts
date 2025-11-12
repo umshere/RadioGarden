@@ -16,6 +16,16 @@ export type VoiceCommandPayload = {
   mood: string;
   transcript: string;
   visual?: string;
+  country?: string | null;
+  language?: string | null;
+  preferredCountries?: string[];
+  preferredLanguages?: string[];
+  preferredTags?: string[];
+  favoriteStationIds?: string[];
+  recentStationIds?: string[];
+  dislikedStationIds?: string[];
+  currentStationId?: string | null;
+  sceneId?: string | null;
 };
 
 export type AiRecommendationResponse = {
@@ -26,4 +36,15 @@ export type RecommendRequestBody = {
   prompt?: string;
   mood?: string;
   visual?: string;
+  scene?: string;
+  sceneId?: string;
+  country?: string | null;
+  language?: string | null;
+  preferredCountries?: string[];
+  preferredLanguages?: string[];
+  preferredTags?: string[];
+  favoriteStationIds?: string[];
+  recentStationIds?: string[];
+  dislikedStationIds?: string[];
+  currentStationId?: string | null;
 };
