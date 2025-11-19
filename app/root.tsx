@@ -4,6 +4,10 @@ import { MantineProvider, createTheme } from "@mantine/core";
 import { useEffect, useRef } from "react";
 import { usePlayerStore } from "~/state/playerStore";
 import stylesheet from "./tailwind.css?url";
+import AppHeader from "~/components/AppHeader";
+import PlayerDock from "~/components/PlayerDock";
+import MobileTabBar from "~/components/MobileTabBar";
+import { TuningOverlay } from "~/components/TuningOverlay";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesheet },
@@ -82,21 +86,23 @@ const theme = createTheme({
   defaultRadius: "xl",
   fontFamily:
     '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+  fontFamilyMonospace:
+    '"Roboto Mono", "IBM Plex Mono", "SF Mono", Monaco, "Cascadia Code", "Courier New", monospace',
   headings: {
     fontFamily:
-      '"Playfair Display", "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
-    fontWeight: "600",
+      '"Inter", "Satoshi", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+    fontWeight: "700",
   },
   shadows: {
-    xs: "0 1px 3px rgba(0, 0, 0, 0.05)",
-    sm: "0 2px 8px rgba(0, 0, 0, 0.08)",
-    md: "0 4px 16px rgba(0, 0, 0, 0.12)",
-    lg: "0 8px 32px rgba(0, 0, 0, 0.2)",
-    xl: "0 20px 60px rgba(1, 26, 55, 0.55)",
+    xs: "0 1px 2px rgba(0, 0, 0, 0.04)",
+    sm: "0 2px 8px rgba(0, 0, 0, 0.06)",
+    md: "0 4px 12px rgba(0, 0, 0, 0.08)",
+    lg: "0 8px 24px rgba(0, 0, 0, 0.12)",
+    xl: "0 16px 48px rgba(0, 0, 0, 0.16)",
   },
   defaultGradient: {
-    from: "#013a63",
-    to: "#0a4875",
+    from: "#f8fafc",
+    to: "#e2e8f0",
     deg: 135,
   },
 });
@@ -138,20 +144,34 @@ export default function App() {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#0a0a0f" />
+        <meta name="theme-color" content="#e0e5ec" />
         <meta name="description" content="Radio Passport: Explore the world's radio stations with an elegant, minimal interface" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <Meta />
         <Links />
       </head>
       <body
-        className="min-h-screen text-slate-100"
+        className="min-h-screen text-slate-900 bg-[#e0e5ec]"
         style={{
-          background: "radial-gradient(140% 120% at 10% 10%, rgba(93, 158, 173, 0.08) 0%, transparent 55%), radial-gradient(120% 120% at 85% 5%, rgba(209, 73, 91, 0.08) 0%, transparent 60%), linear-gradient(180deg, #020d1d 0%, #031c34 45%, #011527 100%)",
+          background: "#e0e5ec",
         }}
       >
-        <MantineProvider theme={theme} defaultColorScheme="dark">
+        <MantineProvider theme={theme} defaultColorScheme="light">
           <>
-            <Outlet />
+            {/* Global app shell header */}
+            <AppHeader />
+
+            {/* Main content area */}
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+              <Outlet />
+            </div>
+
+            {/* Player surfaces */}
+            <PlayerDock />
+            <MobileTabBar />
+            <TuningOverlay />
             <GlobalAudioBridge />
           </>
         </MantineProvider>

@@ -11,9 +11,9 @@ import { rbFetchJson } from "~/utils/radioBrowser";
 import { normalizeStations } from "~/utils/stations";
 
 const OPTIMIZED_MODEL_ROTATION = [
+  "mistralai/mistral-7b-instruct:free",
   "meta-llama/llama-3.3-8b-instruct:free",
   "google/gemma-3n-4b-it:free",
-  "mistralai/mistral-7b-instruct:free",
   "openai/gpt-oss-20b:free",
   "nvidia/nemotron-2-12b-vl:free",
 ];

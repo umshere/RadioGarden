@@ -33,7 +33,10 @@ export function AtlasFilters({
       <div className="flex min-w-max items-center gap-2">
         <button
           type="button"
-          className={`filter-chip ${activeContinent === null ? "filter-chip--active" : ""}`}
+          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${activeContinent === null
+              ? "bg-slate-900 text-white shadow-md"
+              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 shadow-sm"
+            }`}
           onClick={() => onContinentSelect(null)}
         >
           <IconGlobe size={16} />
@@ -43,9 +46,10 @@ export function AtlasFilters({
           <button
             key={continent}
             type="button"
-            className={`filter-chip ${
-              activeContinent === continent ? "filter-chip--active" : ""
-            }`}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${activeContinent === continent
+                ? "bg-slate-900 text-white shadow-md"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 shadow-sm"
+              }`}
             onClick={() => onContinentSelect(continent)}
           >
             {continentIcons[continent] ?? <IconWorld size={16} />}

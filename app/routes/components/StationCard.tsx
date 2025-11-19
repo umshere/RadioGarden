@@ -1,19 +1,9 @@
 import { motion } from "framer-motion";
-import { Text, Badge, ThemeIcon, Avatar, ActionIcon, Tooltip, Button } from "@mantine/core";
-import {
-  IconBroadcast,
-  IconWaveSine,
-  IconLanguage,
-  IconMusic,
-  IconExternalLink,
-  IconPlayerPlayFilled,
-  IconHeart,
-  IconAlertTriangle,
-  IconShieldCheck,
-} from "@tabler/icons-react";
+import { Text, ActionIcon, Button } from "@mantine/core";
+import { IconBroadcast, IconPlayerPlayFilled, IconHeart } from "@tabler/icons-react";
 import type { Station } from "~/types/radio";
 import { vibrate } from "~/utils/haptics";
-import { deriveStationHealth, getHealthBadgeStyle } from "~/utils/stationMeta";
+import { deriveStationHealth } from "~/utils/stationMeta";
 
 type StationCardProps = {
   station: Station;
@@ -38,31 +28,49 @@ export function StationCard({
   const healthMeta = deriveStationHealth(station);
   const reliabilityBadge = healthMeta
     ? {
-        label: healthMeta.label,
-        status: healthMeta.status,
-      }
+      label: healthMeta.label,
+      status: healthMeta.status,
+    }
     : null;
   const languageLabel = station.language && station.languageCodes?.length
     ? `${station.language} • ${station.languageCodes.join(", ")}`
     : station.languageCodes?.length
-    ? station.languageCodes.join(", ")
-    : station.language ?? null;
+      ? station.languageCodes.join(", ")
+      : station.language ?? null;
 
   const tagBadges = station.tagList?.slice(0, 3);
+  const bitrateLabel = station.bitrate > 0 ? `${station.bitrate} kbps` : null;
+  const metaSummary = [languageLabel, bitrateLabel].filter(Boolean).join(" • ");
 
   const cardStatusClass = [
+    isCurrent ? "station-card--active" : "",
     station.healthStatus === "error" ? "station-card--error" : "",
     station.healthStatus === "warning" ? "station-card--warn" : "",
     !hasStream ? "station-card--no-stream" : "",
+    isFavorite ? "station-card--favorite" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
-  const activeClass = isCurrent
-    ? "border-yellow-400/80 shadow-lg shadow-yellow-400/10"
-    : "border-white/10";
-
   const externalHref = getExternalHref(station);
+
+  const statusTone = getStatusTone(reliabilityBadge?.status);
+  const tags = tagBadges?.length ? tagBadges.join(" • ") : null;
+  const supportingMeta = [metaSummary, tags].filter(Boolean).join(" • ");
+
+  const primaryActionProps = hasStream
+    ? {
+      onClick: () => {
+        vibrate(12);
+        onPlay(station);
+      },
+    }
+    : {
+      component: "a" as const,
+      href: station.homepage || externalHref || "#",
+      target: "_blank",
+      rel: "noreferrer",
+    };
 
   return (
     <motion.div
@@ -70,165 +78,73 @@ export function StationCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.02 }}
+      className="h-full"
     >
-      <div
-        className={`station-card ${
-          isFavorite ? "station-card--favorite" : ""
-        } ${cardStatusClass} ${activeClass}`}
-      >
-        <div className="flex items-start gap-4">
-          {station.favicon ? (
-            <Avatar
-              src={station.favicon}
-              size={64}
-              radius="lg"
-              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-            />
-          ) : (
-            <ThemeIcon
-              size={64}
-              radius="lg"
-              style={{
-                background: "rgba(17,27,47,0.8)",
-                border: "1px solid rgba(255,255,255,0.1)",
-              }}
-            >
-              <IconBroadcast size={28} />
-            </ThemeIcon>
-          )}
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <div className="flex items-start justify-between gap-2">
-              <Text
-                fw={600}
-                size="sm"
-                c="#f8fafc"
-                lineClamp={1}
-                data-testid="station-name"
-              >
-                {station.name}
-              </Text>
-              {station.codec && (
-                <Badge
-                  radius="xl"
-                  size="xs"
-                  leftSection={<IconWaveSine size={11} />}
-                  style={{
-                    background: "rgba(148,163,184,0.15)",
-                    border: "1px solid rgba(148,163,184,0.3)",
-                    color: "rgba(226,232,240,0.8)",
-                  }}
-                >
-                  {station.codec}
-                </Badge>
+      <div className={`station-card h-full flex flex-col justify-between ${cardStatusClass}`}>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+            <div className="relative aspect-[5/3] w-full overflow-hidden rounded-3xl border border-white/60 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] sm:aspect-square sm:h-16 sm:w-16 sm:rounded-2xl sm:border-none">
+              {station.favicon ? (
+                <img
+                  src={station.favicon}
+                  alt={station.name}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-slate-50 text-slate-400">
+                  <IconBroadcast size={28} />
+                </div>
               )}
             </div>
-            {reliabilityBadge && (
-              <Badge
-                radius="xl"
-                size="xs"
-                leftSection={
-                  reliabilityBadge.status === "good" ? (
-                    <IconShieldCheck size={11} />
-                  ) : (
-                    <IconAlertTriangle size={11} />
-                  )
-                }
-                style={getHealthBadgeStyle(reliabilityBadge.status)}
-              >
-                {reliabilityBadge.label}
-              </Badge>
-            )}
-            <div className="flex flex-wrap items-center gap-2">
-              {languageLabel && (
-                <Badge
-                  radius="xl"
-                  size="xs"
-                  leftSection={<IconLanguage size={11} />}
-                  style={{
-                    background: "rgba(37,99,235,0.12)",
-                    border: "1px solid rgba(37,99,235,0.25)",
-                    color: "rgba(191,219,254,0.85)",
-                  }}
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Text
+                  fw={600}
+                  size="md"
+                  c="slate.9"
+                  lineClamp={1}
+                  data-testid="station-name"
+                  className="tracking-tight"
                 >
-                  {languageLabel}
-                </Badge>
+                  {station.name}
+                </Text>
+                {reliabilityBadge && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm ring-1 ring-slate-900/5">
+                    <span
+                      className="inline-flex h-1.5 w-1.5 rounded-full"
+                      style={{ background: statusTone?.dot }}
+                    />
+                    {reliabilityBadge.label}
+                  </div>
+                )}
+              </div>
+              {supportingMeta && (
+                <Text size="xs" c="dimmed" lineClamp={2} className="text-slate-600">
+                  {supportingMeta}
+                </Text>
               )}
-              {station.bitrate > 0 && (
-                <Badge
-                  radius="xl"
-                  size="xs"
-                  leftSection={<IconMusic size={11} />}
-                  style={{
-                    background: "rgba(199,158,73,0.18)",
-                    border: "1px solid rgba(199,158,73,0.32)",
-                    color: "#fefae0",
-                  }}
-                >
-                  {station.bitrate} kbps
-                </Badge>
+              {station.country && (
+                <Text size="xs" c="slate.5" className="font-medium uppercase tracking-[0.2em]">
+                  {station.country}
+                </Text>
               )}
-              {tagBadges?.map((tag) => (
-                <Badge
-                  key={tag}
-                  radius="xl"
-                  size="xs"
-                  style={{
-                    background: "rgba(148,163,184,0.12)",
-                    border: "1px solid rgba(148,163,184,0.28)",
-                    color: "rgba(226,232,240,0.75)",
-                  }}
-                >
-                  {tag}
-                </Badge>
-              ))}
             </div>
           </div>
-        </div>
 
-        <div className="divider-soft" />
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Tooltip
-            label={station.homepage ? "Open station homepage" : "Open stream in new tab"}
-            withArrow
-            color="gray"
-          >
-            {externalHref ? (
-              <ActionIcon
-                component="a"
-                href={externalHref}
-                target="_blank"
-                rel="noreferrer"
-                size="lg"
-                radius="xl"
-                style={{
-                  background: "rgba(17,27,47,0.9)",
-                  border: "1px solid rgba(148,163,184,0.25)",
-                  color: "rgba(226,232,240,0.75)",
-                }}
-                aria-label={`Open ${station.name} stream in a new tab`}
-              >
-                <IconExternalLink size={18} />
-              </ActionIcon>
-            ) : (
-              <ActionIcon
-                size="lg"
-                radius="xl"
-                disabled
-                style={{
-                  background: "rgba(17,27,47,0.6)",
-                  border: "1px solid rgba(148,163,184,0.15)",
-                  color: "rgba(226,232,240,0.45)",
-                  cursor: "not-allowed",
-                }}
-                aria-label={`${station.name} stream unavailable`}
-              >
-                <IconExternalLink size={18} />
-              </ActionIcon>
-            )}
-          </Tooltip>
-          {onToggleFavorite && (
-            <Tooltip label={isFavorite ? "Remove from favorites" : "Add to favorites"} withArrow color="gray">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              radius="xl"
+              size="sm"
+              leftSection={<IconPlayerPlayFilled size={16} />}
+              variant="default"
+              className="flex-1 border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-lg"
+              aria-label={hasStream ? `Play ${station.name}` : `Visit ${station.name}`}
+              {...primaryActionProps}
+            >
+              {hasStream ? "Play station" : "Visit station"}
+            </Button>
+            {onToggleFavorite && (
               <ActionIcon
                 size="lg"
                 radius="xl"
@@ -236,68 +152,36 @@ export function StationCard({
                   vibrate(10);
                   onToggleFavorite?.(station);
                 }}
-                style={{
-                  background: isFavorite
-                    ? "linear-gradient(120deg, rgba(209,73,91,0.9) 0%, rgba(148,34,56,0.9) 100%)"
-                    : "rgba(17,27,47,0.9)",
-                  border: isFavorite
-                    ? "1px solid rgba(254,250,226,0.6)"
-                    : "1px solid rgba(148,163,184,0.25)",
-                  color: isFavorite ? "#fde4e4" : "rgba(226,232,240,0.75)",
-                }}
+                variant="subtle"
+                color={isFavorite ? "red" : "gray"}
+                className={`border border-transparent text-slate-500 transition hover:text-red-500 ${isFavorite ? "bg-rose-50 text-rose-500" : "bg-white"}`}
                 aria-pressed={isFavorite}
                 aria-label={isFavorite ? `Unfavorite ${station.name}` : `Favorite ${station.name}`}
               >
                 <IconHeart size={18} fill={isFavorite ? "currentColor" : "none"} />
               </ActionIcon>
-            </Tooltip>
-          )}
-          {hasStream ? (
-            <Tooltip label={`Play ${station.name}`} withArrow>
-              <Button
-                radius="xl"
-                size="sm"
-                leftSection={<IconPlayerPlayFilled size={16} />}
-                onClick={() => {
-                  vibrate(12);
-                  onPlay(station);
-                }}
-                style={{
-                  background:
-                    "linear-gradient(120deg, rgba(199,158,73,0.9) 0%, rgba(148,113,51,0.9) 100%)",
-                  color: "#0f172a",
-                  fontWeight: 600,
-                }}
-                aria-label={`Play ${station.name}`}
-              >
-                Play station
-              </Button>
-            </Tooltip>
-          ) : (
-            <Tooltip label="Stream unavailable. Visit station website." withArrow>
-              <Button
-                radius="xl"
-                size="sm"
-                component="a"
-                href={station.homepage || externalHref || "#"}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  background: "rgba(17,27,47,0.9)",
-                  border: "1px solid rgba(148,163,184,0.3)",
-                  color: "rgba(226,232,240,0.85)",
-                  fontWeight: 600,
-                }}
-                aria-label={`Visit ${station.name} homepage`}
-              >
-                Visit station
-              </Button>
-            </Tooltip>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
   );
+}
+
+function getStatusTone(status?: string | null) {
+  if (!status) {
+    return null;
+  }
+  switch (status) {
+    case "good":
+      return { dot: "#4ade80" };
+    case "warning":
+      return { dot: "#facc15" };
+    case "error":
+      return { dot: "#f87171" };
+    default:
+      return { dot: "#94a3b8" };
+  }
 }
 
 function getExternalHref(station: Station): string | undefined {

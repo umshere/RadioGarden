@@ -12,21 +12,21 @@ export function getHealthBadgeStyle(status: StationHealthStatus): CSSProperties 
   switch (status) {
     case "error":
       return {
-        background: "rgba(209,73,91,0.15)",
-        border: "1px solid rgba(209,73,91,0.35)",
-        color: "rgba(255,205,214,0.9)",
+        background: "#fee2e2",
+        border: "1px solid #fca5a5",
+        color: "#991b1b",
       };
     case "warning":
       return {
-        background: "rgba(248,180,0,0.12)",
-        border: "1px solid rgba(248,180,0,0.4)",
-        color: "rgba(255,224,138,0.9)",
+        background: "#fef3c7",
+        border: "1px solid #fcd34d",
+        color: "#92400e",
       };
     default:
       return {
-        background: "rgba(34,197,94,0.12)",
-        border: "1px solid rgba(34,197,94,0.28)",
-        color: "rgba(190,242,100,0.9)",
+        background: "#d1fae5",
+        border: "1px solid #6ee7b7",
+        color: "#065f46",
       };
   }
 }

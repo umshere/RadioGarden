@@ -69,22 +69,7 @@ export function QuickRetuneWidget({
 
   return (
     <div className="quick-retune-container">
-      <Tooltip label={isOpen ? "Close country picker" : "Open country picker"} position="top" withArrow>
-        <motion.button
-          type="button"
-          className={`quick-retune-trigger ${isOpen ? "quick-retune-trigger--active" : ""}`}
-          onClick={() => onOpenChange(!isOpen)}
-          whileTap={{ scale: 0.96 }}
-          aria-haspopup="dialog"
-          aria-controls="quick-retune-panel"
-          aria-expanded={isOpen}
-          aria-label={isOpen ? "Close country picker" : "Open country picker"}
-          title={isOpen ? "Close country picker" : "Open country picker"}
-          style={{ visibility: isOpen ? "hidden" : "visible" }}
-        >
-          <IconMapPin size={18} />
-        </motion.button>
-      </Tooltip>
+      {/* Floating trigger removed - controlled via PlayerDock */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -99,8 +84,8 @@ export function QuickRetuneWidget({
               style={{
                 position: "fixed",
                 inset: 0,
-                background: "rgba(2,10,20,0.6)",
-                backdropFilter: "blur(2px)",
+                background: "rgba(255,255,255,0.6)",
+                backdropFilter: "blur(4px)",
                 zIndex: 59,
               }}
             />
@@ -114,124 +99,115 @@ export function QuickRetuneWidget({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.96 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="quick-retune-panel"
+              className="fixed bottom-24 right-4 z-[60] w-80 rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10"
               id="quick-retune-panel"
-              style={{ position: "fixed", right: 16, bottom: 84, zIndex: 61 }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") onOpenChange(false);
               }}
             >
-          <div className="quick-retune-panel__header">
-            <Text id="quick-retune-title" size="sm" fw={600} c="#f8fafc">
-              Quick retune
-            </Text>
-            <Tooltip label="Close" position="left" withArrow>
-              <ActionIcon
-                size="sm"
-                radius="xl"
-                variant="subtle"
-                onClick={() => onOpenChange(false)}
-                style={{ color: "rgba(226,232,240,0.7)" }}
-                aria-label="Close country picker"
-              >
-                <IconX size={14} />
-              </ActionIcon>
-            </Tooltip>
-          </div>
-          <div className="quick-retune-panel__row">
-            {continents.map((continent) => {
-              const isActive = activeContinent === continent;
-              return (
-                <button
-                  key={continent}
-                  type="button"
-                  className={`quick-retune-chip ${
-                    isActive ? "quick-retune-chip--active" : ""
-                  }`}
-                  onClick={() => onContinentSelect(isActive ? null : continent)}
-                  aria-pressed={isActive}
-                  aria-label={`${isActive ? "Disable" : "Enable"} ${continent} filter`}
-                >
-                  {continent}
-                </button>
-              );
-            })}
-          </div>
-          <div className="quick-retune-panel__countries">
-            {previewCountries.length === 0 ? (
-              <Text size="xs" c="rgba(226,232,240,0.6)">
-                No spotlight countries available.
-              </Text>
-            ) : (
-              previewCountries.map((country) => (
-                <button
-                  key={country.name}
-                  type="button"
-                  className="quick-retune-country"
-                  onClick={async () => {
-                    setLoadingCountry(country.name);
-                    await onCountrySelect(country.name);
-                    // Don't close here - let the effect handle it
-                  }}
-                  aria-label={`Retune to ${country.name}`}
-                  style={{ position: "relative" }}
-                  disabled={isLoading(country.name)}
-                >
-                  <div className="quick-retune-country__info">
-                    <CountryFlag
-                      iso={country.iso_3166_1}
-                      title={`${country.name} flag`}
-                      size={22}
-                    />
-                    <span>{country.name}</span>
-                  </div>
-                  <span className="quick-retune-country__meta">
-                    {country.stationcount.toLocaleString()} stations
-                  </span>
-                  {/* Loading overlay */}
-                  {isLoading(country.name) && (
-                    <div
-                      className="absolute inset-0 grid place-items-center"
-                      style={{
-                        background: "rgba(2,10,20,0.75)",
-                        backdropFilter: "blur(3px)",
-                        borderRadius: "1rem",
-                      }}
-                      aria-hidden="true"
+              <div className="mb-4 flex items-center justify-between">
+                <Text id="quick-retune-title" size="sm" fw={700} c="slate.9">
+                  Quick retune
+                </Text>
+                <Tooltip label="Close" position="left" withArrow>
+                  <ActionIcon
+                    size="sm"
+                    radius="xl"
+                    variant="subtle"
+                    onClick={() => onOpenChange(false)}
+                    className="text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    aria-label="Close country picker"
+                  >
+                    <IconX size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              </div>
+              <div className="mb-4 flex flex-wrap gap-2">
+                {continents.map((continent) => {
+                  const isActive = activeContinent === continent;
+                  return (
+                    <button
+                      key={continent}
+                      type="button"
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${isActive
+                          ? "bg-slate-900 text-white shadow-md"
+                          : "bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+                        }`}
+                      onClick={() => onContinentSelect(isActive ? null : continent)}
+                      aria-pressed={isActive}
+                      aria-label={`${isActive ? "Disable" : "Enable"} ${continent} filter`}
                     >
-                      <Loader size="sm" color="yellow" />
-                    </div>
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-          <Tooltip label="Pick a random station" position="top" withArrow>
-            <Button
-              radius="xl"
-              size="xs"
-              variant="light"
-              leftSection={<IconArrowsShuffle size={14} />}
-              onClick={async () => {
-                setLoadingCountry("surprise");
-                await onSurprise();
-              }}
-              disabled={loadingCountry === "surprise"}
-              style={{
-                width: "100%",
-                color: "#0f172a",
-                background: "rgba(254,250,226,0.9)",
-                border: "1px solid rgba(148,163,184,0.25)",
-                fontWeight: 600,
-              }}
-              aria-label="Surprise me with a random station"
-            >
-              Surprise me
-            </Button>
-          </Tooltip>
-          </motion.div>
-        </>
-      )}
+                      {continent}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mb-4 flex flex-col gap-1">
+                {previewCountries.length === 0 ? (
+                  <Text size="xs" c="dimmed">
+                    No spotlight countries available.
+                  </Text>
+                ) : (
+                  previewCountries.map((country) => (
+                    <button
+                      key={country.name}
+                      type="button"
+                      className="group flex w-full items-center justify-between rounded-xl p-2 text-left transition-colors hover:bg-slate-50"
+                      onClick={async () => {
+                        setLoadingCountry(country.name);
+                        await onCountrySelect(country.name);
+                        // Don't close here - let the effect handle it
+                      }}
+                      aria-label={`Retune to ${country.name}`}
+                      style={{ position: "relative" }}
+                      disabled={isLoading(country.name)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <CountryFlag
+                          iso={country.iso_3166_1}
+                          title={`${country.name} flag`}
+                          size={22}
+                          className="rounded-md shadow-sm border border-slate-100"
+                        />
+                        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">{country.name}</span>
+                      </div>
+                      <span className="text-xs font-medium text-slate-400 group-hover:text-slate-500">
+                        {country.stationcount.toLocaleString()}
+                      </span>
+                      {/* Loading overlay */}
+                      {isLoading(country.name) && (
+                        <div
+                          className="absolute inset-0 grid place-items-center rounded-xl bg-white/60 backdrop-blur-[1px]"
+                          aria-hidden="true"
+                        >
+                          <Loader size="sm" color="dark" />
+                        </div>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+              <Tooltip label="Pick a random station" position="top" withArrow>
+                <Button
+                  radius="xl"
+                  size="xs"
+                  variant="light"
+                  color="gray"
+                  leftSection={<IconArrowsShuffle size={14} />}
+                  onClick={async () => {
+                    setLoadingCountry("surprise");
+                    await onSurprise();
+                  }}
+                  disabled={loadingCountry === "surprise"}
+                  className="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                  aria-label="Surprise me with a random station"
+                >
+                  Surprise me
+                </Button>
+              </Tooltip>
+            </motion.div>
+          </>
+        )}
       </AnimatePresence>
     </div>
   );

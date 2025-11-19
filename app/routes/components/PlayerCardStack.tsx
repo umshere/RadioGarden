@@ -18,7 +18,6 @@ import {
 } from "@tabler/icons-react";
 import { CountryFlag } from "~/components/CountryFlag";
 import PassportStampIcon from "~/components/PassportStampIcon";
-import type { AiDescriptorState } from "~/types/ai";
 import type { Station, PlayerCard, ListeningMode } from "~/types/radio";
 import { deriveStationHealth, getHealthBadgeStyle } from "~/utils/stationMeta";
 
@@ -36,9 +35,8 @@ function StationDisc({ station, isActive, isNowPlaying, initials }: StationDiscP
   return (
     <div className={`travel-trail__disc-wrap ${isActive ? "travel-trail__disc-wrap--active" : ""}`}>
       <div
-        className={`travel-trail__disc ${isActive ? "travel-trail__disc--active" : ""} ${
-          showImage ? "" : "travel-trail__disc--fallback"
-        }`}
+        className={`travel-trail__disc ${isActive ? "travel-trail__disc--active" : ""} ${showImage ? "" : "travel-trail__disc--fallback"
+          }`}
       >
         {showImage ? (
           <img
@@ -74,7 +72,6 @@ export type PlayerCardStackProps = {
   localStationCount: number;
   globalStationCount: number;
   selectedCountry: string | null;
-  worldDescriptor?: AiDescriptorState;
   onCardChange: (direction: 1 | -1) => void;
   onCardJump: (index: number) => void;
   onToggleFavorite: (station: Station) => void;
@@ -87,7 +84,6 @@ export type PlayerCardStackProps = {
   onSetListeningMode: (mode: ListeningMode) => void;
   onMissionExploreWorld: () => void;
   onMissionStayLocal: () => void;
-  onRequestWorldMood?: () => void;
 };
 
 export function PlayerCardStack({
@@ -106,7 +102,6 @@ export function PlayerCardStack({
   localStationCount,
   globalStationCount,
   selectedCountry,
-  worldDescriptor,
   onCardChange,
   onCardJump,
   onToggleFavorite,
@@ -116,11 +111,10 @@ export function PlayerCardStack({
   onSetListeningMode,
   onMissionExploreWorld,
   onMissionStayLocal,
-  onRequestWorldMood,
 }: PlayerCardStackProps) {
   const [newlyAddedStations, setNewlyAddedStations] = useState<Set<string>>(new Set());
   const previousStationsRef = useRef<Set<string>>(new Set());
-  
+
   const stationCards = useMemo(
     () =>
       playerCards.filter(
@@ -185,19 +179,19 @@ export function PlayerCardStack({
     // Only trigger animation for the most recent station added
     if (recentStations.length > 0 && previousStationsRef.current.size > 0) {
       const newestStation = recentStations[0]; // Most recent is first
-      
+
       if (newestStation && !previousStationsRef.current.has(newestStation.uuid)) {
         setNewlyAddedStations(new Set([newestStation.uuid]));
-        
+
         // Remove animation class after animation completes
         const timer = setTimeout(() => {
           setNewlyAddedStations(new Set());
         }, 1800); // Match animation duration
-        
+
         return () => clearTimeout(timer);
       }
     }
-    
+
     // Update ref with current session stations
     previousStationsRef.current = new Set(recentStations.map(s => s.uuid));
   }, [recentStations]);
@@ -205,43 +199,8 @@ export function PlayerCardStack({
   const worldCaption = isFetchingExplore
     ? "Loading global mixtape..."
     : `${globalStationCount.toLocaleString()} stations across the atlas`;
-  const localCaption = `${localStationCount.toLocaleString()} stations from ${
-    selectedCountry ?? "this country"
-  }`;
-  const worldDescriptorMessage = useMemo(() => {
-    if (!worldDescriptor) {
-      return "Use the mic in world mode to set an AI-crafted vibe.";
-    }
-
-    if (worldDescriptor.status === "loading") {
-      if (worldDescriptor.mood) {
-        return `Tuning in a ${worldDescriptor.mood} vibe…`;
-      }
-
-      if (worldDescriptor.transcript) {
-        return `Heard “${worldDescriptor.transcript}”. Refreshing the vibe…`;
-      }
-
-      return "Refreshing AI vibe…";
-    }
-
-    if (worldDescriptor.status === "error") {
-      return worldDescriptor.error
-        ? `AI error: ${worldDescriptor.error}`
-        : "AI descriptor request failed.";
-    }
-
-    if (worldDescriptor.descriptorSummary) {
-      const moodSuffix = worldDescriptor.mood ? ` (${worldDescriptor.mood})` : "";
-      return `AI vibe • ${worldDescriptor.descriptorSummary}${moodSuffix}`;
-    }
-
-    return "Use the mic in world mode to set an AI-crafted vibe.";
-  }, [worldDescriptor]);
-  const worldDescriptorColor =
-    worldDescriptor?.status === "error"
-      ? "rgba(248,113,113,0.85)"
-      : "rgba(226,232,240,0.45)";
+  const localCaption = `${localStationCount.toLocaleString()} stations from ${selectedCountry ?? "this country"
+    }`;
 
   const initialsFromName = (name: string) => {
     const cleaned = name.trim();
@@ -275,7 +234,7 @@ export function PlayerCardStack({
     const isNowPlaying = nowPlaying?.uuid === station.uuid;
     const stationInitials = initialsFromName(station.name);
     const isNewlyAdded = newlyAddedStations.has(station.uuid);
-    
+
     // Get flag color for country
     const flagColorMap: Record<string, string> = {
       IN: "rgba(255, 153, 51, 0.8)",    // India - Orange
@@ -309,15 +268,15 @@ export function PlayerCardStack({
       >
         {/* Card number badge - positioned on top edge like folder tab */}
         <div className="travel-stack__tab-badge">#{index + 1}</div>
-        
+
         {/* Card stack indicator with flag color */}
         <div className="travel-stack__edge" style={{ background: flagColor }} />
-        
+
         {/* Stamp indicator */}
         <div className={`travel-stack__stamp ${isNewlyAdded ? "travel-stack__stamp--stamping" : ""}`} aria-label="Stamped">
           <PassportStampIcon size={28} id={`stamp-${index}`} />
         </div>
-        
+
         {/* Card content - revealed on hover */}
         <div className="travel-stack__content">
           {stationCountryMeta?.iso_3166_1 && (
@@ -353,7 +312,7 @@ export function PlayerCardStack({
               </div>
             </div>
           </div>
-          
+
           {isNowPlaying && (
             <div className="travel-stack__playing-badge">
               <IconHeadphones size={12} />
@@ -369,51 +328,38 @@ export function PlayerCardStack({
     <section id="player" className="mt-8">
       <div className="player-stack-shell">
         <div className="travel-log-shell">
-          <div className="travel-log__header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <img 
-                src="/radio-passport-icon.png" 
-                alt="Radio Passport" 
-                style={{ 
-                  width: '2.5rem', 
-                  height: '2.5rem', 
-                  filter: 'drop-shadow(0 2px 8px rgba(199, 158, 73, 0.3))'
-                }} 
+          <div className="rounded-3xl border border-slate-200 bg-white/50 p-6 shadow-sm">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <img
+                src="/radio-passport-icon.png"
+                alt="Radio Passport"
+                style={{
+                  width: '2.5rem',
+                  height: '2.5rem',
+                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
+                }}
               />
               <div>
-                <Title order={2} style={{ fontSize: "1.45rem", fontWeight: 600 }}>
+                <Title order={2} style={{ fontSize: "1.45rem", fontWeight: 700, color: "#0f172a" }}>
                   Travel log
                 </Title>
-                <Text size="sm" c="rgba(226,232,240,0.7)">
+                <Text size="sm" c="dimmed">
                   Hover to preview • Click to play
                 </Text>
               </div>
             </div>
-          <div className="travel-log__stats">
-            <Badge
-              radius="xl"
-              size="md"
-              leftSection={<IconHeadphones size={16} />}
-                style={{
-                  background: "rgba(199,158,73,0.2)",
-                  border: "1px solid rgba(199,158,73,0.45)",
-                  color: "#fefae0",
-                }}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <Badge
+                radius="xl"
+                size="md"
+                leftSection={<IconHeadphones size={16} />}
+                className="bg-slate-100 text-slate-600 border border-slate-200"
               >
                 {totalStations.toLocaleString()} stamped
               </Badge>
-              <Text size="xs" c="rgba(226,232,240,0.55)">
+              <Text size="xs" c="dimmed">
                 {selectedCountry ? localCaption : worldCaption}
               </Text>
-              {!selectedCountry && (
-                <Text
-                  size="xs"
-                  c={worldDescriptorColor}
-                  style={{ marginTop: 4, maxWidth: "240px" }}
-                >
-                  {worldDescriptorMessage}
-                </Text>
-              )}
             </div>
           </div>
 

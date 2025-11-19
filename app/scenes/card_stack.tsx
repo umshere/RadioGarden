@@ -17,13 +17,13 @@ import { deriveStationHealth, getHealthBadgeStyle } from "~/utils/stationMeta";
 import { usePlayerStore } from "~/state/playerStore";
 
 const MOOD_BACKGROUNDS: Record<string, string> = {
-  night: "linear-gradient(135deg, #111827, #1f2937)",
-  sunrise: "linear-gradient(135deg, #ff9a9e, #fad0c4)",
-  lush: "linear-gradient(135deg, #56ab2f, #a8e063)",
-  ocean: "linear-gradient(135deg, #36d1dc, #5b86e5)",
+  night: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
+  sunrise: "linear-gradient(135deg, #fff1eb, #ace0f9)",
+  lush: "linear-gradient(135deg, #f0f9ff, #cbebff)",
+  ocean: "linear-gradient(135deg, #e0c3fc, #8ec5fc)",
 };
 
-const TAG_LIMIT = 3;
+const TAG_LIMIT = 2;
 const CARD_STACK_LIMIT = 8;
 const CARD_BASE_WIDTH = 440;
 const CARD_BASE_HEIGHT = 320;
@@ -32,15 +32,26 @@ const CARD_WIDTH_STYLE = `min(${CARD_BASE_WIDTH}px, 82vw)`;
 const CARD_HEIGHT_STYLE = `clamp(260px, 48vh, ${CARD_BASE_HEIGHT}px)`;
 const SCENE_MIN_HEIGHT = "min(48rem, 88vh)";
 const DEFAULT_REASON = "The Passport sequenced stations that best fit this mood.";
-const BASE_BACKGROUND = "#050b18";
+const BASE_BACKGROUND = "transparent";
+const FREQUENCY_BASE = 87.5;
+const FREQUENCY_RANGE = 18.5;
 
 const FAN_CONFIG = {
-  spread: 120,
-  verticalLift: 18,
-  rotation: 6,
-  depthScale: 0.075,
-  depthFade: 0.18,
-  maxVisibleOffset: 3,
+  spread: 40, // Tighter spread for desktop stack
+  verticalLift: 0,
+  rotation: 0,
+  depthScale: 0.05,
+  depthFade: 0.15,
+  maxVisibleOffset: 4,
+};
+
+const MOBILE_FAN_CONFIG = {
+  spread: 100, // Percentage based spread for mobile slider
+  verticalLift: 0,
+  rotation: 0,
+  depthScale: 0,
+  depthFade: 0,
+  maxVisibleOffset: 1,
 };
 
 const CARD_CENTER_LEFT = 47;
@@ -64,20 +75,22 @@ const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlay
 
   if (!station) return null;
 
-  const artworkAccent = getCardAccent(0);
   const fallbackInitials = getFallbackInitials(station.name);
+  const languageLabel = getDisplayLanguage(station);
+  const secondaryLine = [station.country, languageLabel].filter(Boolean).join(" • ");
 
-  const buttonStyle: CSSProperties = {
+  const controlButtonStyle: CSSProperties = {
     width: "46px",
     height: "46px",
     borderRadius: "999px",
-    border: "1px solid rgba(248,250,252,0.12)",
-    background: "rgba(15,23,42,0.85)",
-    color: "#f8fafc",
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "rgba(255,255,255,0.6)",
+    color: "#334155",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transition: "transform 0.15s ease, border-color 0.15s ease",
+    transition: "all 0.2s ease",
+    backdropFilter: "blur(12px)",
   };
 
   return (
@@ -90,30 +103,41 @@ const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlay
         alignItems: "center",
         justifyContent: "space-between",
         gap: "1.1rem",
-        padding: "0.95rem 1.5rem",
+        padding: "1rem 1.4rem",
         borderRadius: "1.25rem",
-        background: "rgba(2,6,23,0.92)",
-        border: "1px solid rgba(248,250,252,0.12)",
-        boxShadow: "0 30px 80px rgba(2,6,23,0.7)",
-        backdropFilter: "blur(22px)",
+        background: "rgba(255,255,255,0.75)",
+        border: "1px solid rgba(255,255,255,0.6)",
+        boxShadow: "0 25px 40px rgba(148,163,184,0.15)",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(circle at 15% 30%, rgba(56,189,248,0.08), transparent 45%)",
+          mixBlendMode: "normal",
+        }}
+      />
       <div style={{ display: "flex", alignItems: "center", gap: "1.2rem", minWidth: 0 }}>
         <div
           style={{
             width: "64px",
             height: "64px",
-            borderRadius: "1rem",
+            borderRadius: "0.75rem",
             overflow: "hidden",
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: station.favicon ? undefined : artworkAccent,
+            border: "1px solid rgba(226,232,240,0.8)",
+            background: station.favicon ? "rgba(255,255,255,0.9)" : "rgba(241,245,249,0.9)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "rgba(248,250,252,0.95)",
-            fontSize: "1.8rem",
+            color: "#334155",
+            fontSize: "1.65rem",
             fontWeight: 600,
-            letterSpacing: "0.04em",
+            letterSpacing: "0.08em",
+            boxShadow: "0 12px 32px rgba(148,163,184,0.2)",
           }}
         >
           {station.favicon ? (
@@ -130,10 +154,10 @@ const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlay
         <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", minWidth: 0 }}>
           <span
             style={{
-              fontSize: "0.6rem",
-              letterSpacing: "0.4em",
+              fontSize: "0.55rem",
+              letterSpacing: "0.65em",
               textTransform: "uppercase",
-              color: "rgba(226,232,240,0.65)",
+              color: "rgba(100,116,139,0.8)",
             }}
           >
             Now Playing
@@ -141,9 +165,9 @@ const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlay
           <p
             style={{
               margin: 0,
-              fontSize: "1.15rem",
-              fontWeight: 600,
-              color: "rgba(248,250,252,0.98)",
+              fontSize: "1.2rem",
+              fontWeight: 700,
+              color: "#0f172a",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -153,11 +177,11 @@ const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlay
           </p>
           <span
             style={{
-              fontSize: "0.75rem",
-              color: "rgba(203,213,225,0.8)",
+              fontSize: "0.8rem",
+              color: "rgba(71,85,105,0.75)",
             }}
           >
-            {[station.country, station.state].filter(Boolean).join(" • ") || station.language}
+            {secondaryLine || "Around the world"}
           </span>
         </div>
       </div>
@@ -172,9 +196,10 @@ const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlay
           onClick={onPrevious}
           disabled={!onPrevious}
           style={{
-            ...buttonStyle,
+            ...controlButtonStyle,
             opacity: onPrevious ? 1 : 0.4,
             cursor: onPrevious ? "pointer" : "not-allowed",
+            boxShadow: onPrevious ? "0 8px 20px rgba(148,163,184,0.2)" : "none",
           }}
         >
           <IconPlayerTrackPrev size={20} />
@@ -184,12 +209,15 @@ const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlay
           aria-label={isPlaying ? "Pause" : "Play"}
           onClick={togglePlay}
           style={{
-            ...buttonStyle,
+            ...controlButtonStyle,
             width: "56px",
             height: "56px",
-            background: "linear-gradient(120deg, rgba(59,130,246,0.95), rgba(147,197,253,0.95))",
-            border: "none",
-            color: "#020617",
+            border: "1px solid rgba(14,165,233,0.2)",
+            background: isPlaying
+              ? "linear-gradient(135deg, rgba(14,165,233,0.1), rgba(56,189,248,0.2))"
+              : "linear-gradient(135deg, rgba(255,255,255,0.8), rgba(241,245,249,0.8))",
+            color: isPlaying ? "#0284c7" : "#0f172a",
+            boxShadow: "0 15px 30px rgba(148,163,184,0.25)",
           }}
         >
           {isPlaying ? <IconPlayerPauseFilled size={26} /> : <IconPlayerPlayFilled size={26} />}
@@ -200,9 +228,10 @@ const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlay
           onClick={onNext}
           disabled={!onNext}
           style={{
-            ...buttonStyle,
+            ...controlButtonStyle,
             opacity: onNext ? 1 : 0.4,
             cursor: onNext ? "pointer" : "not-allowed",
+            boxShadow: onNext ? "0 8px 20px rgba(148,163,184,0.2)" : "none",
           }}
         >
           <IconPlayerTrackNext size={20} />
@@ -260,10 +289,11 @@ function formatCountryLabel(station: Station): string {
   return country;
 }
 
-function formatBitrateLabel(station: Station): string {
-  const codec = station.codec ? station.codec.toUpperCase() : "MP3";
-  const bitrate = station.bitrate > 0 ? `${station.bitrate} kbps` : "Live stream";
-  return `${codec} · ${bitrate}`;
+function getDecorativeFrequency(index: number): { label: string; percent: number } {
+  const rawValue = FREQUENCY_BASE + ((index * 1.75) % FREQUENCY_RANGE);
+  const clamped = Math.max(FREQUENCY_BASE, Math.min(FREQUENCY_BASE + FREQUENCY_RANGE, rawValue));
+  const percent = ((clamped - FREQUENCY_BASE) / FREQUENCY_RANGE) * 100;
+  return { label: `${clamped.toFixed(1)} FM`, percent };
 }
 
 interface StationCardFanItemProps {
@@ -278,6 +308,7 @@ interface StationCardFanItemProps {
   moodLabel: string;
   onHover: (id: string | null) => void;
   onClick: (station: Station) => void;
+  fanConfig: typeof FAN_CONFIG;
 }
 
 const StationCardFanItem = memo(
@@ -293,49 +324,87 @@ const StationCardFanItem = memo(
     moodLabel,
     onHover,
     onClick,
+    fanConfig,
   }: StationCardFanItemProps) => {
     const isActive = station.uuid === (activeStationId ?? localActiveId);
     const isHovered = hoveredId === station.uuid;
     const offset = index - activeIndex;
-    const clampedOffset = Math.max(-FAN_CONFIG.maxVisibleOffset, Math.min(FAN_CONFIG.maxVisibleOffset, offset));
+    const clampedOffset = Math.max(-fanConfig.maxVisibleOffset, Math.min(fanConfig.maxVisibleOffset, offset));
     const depth = Math.abs(clampedOffset);
-    const translateX = clampedOffset * FAN_CONFIG.spread;
-    const translateY = depth * FAN_CONFIG.verticalLift - (offset === 0 ? 8 : 0);
-    const rotate = clampedOffset * FAN_CONFIG.rotation;
-    const baseScale = 1 - depth * FAN_CONFIG.depthScale;
-    const scale = isActive ? 1 : Math.max(0.84, baseScale);
-    const depthOpacity = isActive ? 1 : 1 - Math.min(FAN_CONFIG.depthFade * depth, 0.45);
-    const zIndex = isActive ? 120 : 90 - depth * 10;
+    const isMobile = fanConfig === MOBILE_FAN_CONFIG;
+
+    // Desktop Stack Logic
+    let translateX: number | string = clampedOffset * fanConfig.spread;
+    let translateY = depth * fanConfig.verticalLift;
+    let rotate = clampedOffset * fanConfig.rotation;
+    const baseScale = 1 - depth * fanConfig.depthScale;
+    let scale = isActive ? 1 : Math.max(0.84, baseScale);
+    let depthOpacity = isActive ? 1 : 1 - Math.min(fanConfig.depthFade * depth, 0.45);
+    let zIndex = isActive ? 120 : 90 - depth * 10;
+
+    // Mobile Slider Logic
+    if (isMobile) {
+      // On mobile, we want a flat slider. 
+      // Active card is centered. 
+      // Previous card is off-screen left.
+      // Next card is off-screen right.
+      translateX = `${offset * 100}%`; // Use percentage for mobile
+      translateY = 0;
+      rotate = 0;
+      scale = 1;
+      depthOpacity = 1;
+      zIndex = isActive ? 10 : 1;
+    }
+
     const accent = getCardAccent(index);
     const fallbackInitials = getFallbackInitials(station.name);
-    const languageLabel = getDisplayLanguage(station);
-    const bitrateLabel = formatBitrateLabel(station);
     const stationOrder = index + 1;
     const tags = extractTags(station);
+    const displayTags = tags.length > 0 ? tags : ["curated", moodLabel];
+    const primaryTag = displayTags[0];
+    const remainingTagCount = Math.max(displayTags.length - 1, 0);
+    const bitrateChip = station.bitrate > 0 ? `${station.bitrate} kbps` : "Live stream";
     const healthMeta = deriveStationHealth(station);
-    const healthIcon =
+    const healthColor =
+      healthMeta?.status === "warning" || healthMeta?.status === "error"
+        ? "rgba(239,68,68,0.85)"
+        : "rgba(34,197,94,0.85)";
+    const reliabilityLabel =
+      healthMeta?.status === "warning" || healthMeta?.status === "error" ? "Signal spotty" : "Signal steady";
+    const reliabilityIcon =
       healthMeta?.status === "warning" || healthMeta?.status === "error" ? (
         <IconAlertTriangle size={12} />
       ) : (
         <IconShieldCheck size={12} />
       );
-    const cardBackground = isActive ? "rgba(8,15,35,0.98)" : "rgba(6,10,24,0.9)";
-    const borderColor = isActive ? "rgba(34,211,238,0.85)" : "rgba(148,163,184,0.35)";
+    const description = (station.highlight?.trim() || descriptorReason).trim();
+    const locationLine =
+      [station.state?.trim(), station.country?.trim()].filter(Boolean).join(" / ") ||
+      formatCountryLabel(station) ||
+      "Global broadcast";
+    const { label: frequencyLabel, percent: frequencyPercent } = getDecorativeFrequency(index);
+
+    const cardBackground = isActive
+      ? "#ffffff"
+      : "#f1f5f9";
+    const borderColor = isActive ? "rgba(148,163,184,0.28)" : "rgba(148,163,184,0.12)";
     const glowShadow = isActive
-      ? "0 15px 45px rgba(34,211,238,0.35)"
+      ? "0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(148,163,184,0.1)"
       : isHovered
-        ? "0 12px 30px rgba(59,130,246,0.25)"
-        : "0 18px 35px rgba(3,7,18,0.65)";
-    const locationLabel = formatCountryLabel(station);
-    const metadataLine = [locationLabel, languageLabel, bitrateLabel];
-    const displayTags = tags.length > 0 ? tags : ["curated", "passport", moodLabel];
+        ? "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+        : "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
+    const artBorderColor = isActive ? "rgba(148,163,184,0.28)" : "rgba(148,163,184,0.15)";
+    const playLabel = isActive ? "On Air" : "Play";
+
+    // Content opacity for non-active cards to prevent visual clutter
+    const contentOpacity = isActive ? 1 : 0.1;
 
     return (
       <motion.button
         key={station.uuid}
         className="station-list-card"
         type="button"
-        initial={{ opacity: 0, scale: 0.85, y: 40 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{
           opacity: isActive ? 1 : depthOpacity,
           x: translateX,
@@ -343,7 +412,7 @@ const StationCardFanItem = memo(
           rotate,
           scale,
         }}
-        whileHover={{ scale: Math.min(scale + 0.06, 1.08) }}
+        whileHover={{ scale: Math.min(scale + 0.02, 1.02) }}
         transition={{
           type: "spring",
           stiffness: 200,
@@ -353,26 +422,26 @@ const StationCardFanItem = memo(
         style={{
           position: "absolute",
           top: "50%",
-          left: `${CARD_CENTER_LEFT}%`,
-          transform: "translate(-50%, -50%)",
-          width: CARD_WIDTH_STYLE,
-          height: CARD_HEIGHT_STYLE,
-          borderRadius: "1.5rem",
-          border: `1.5px solid ${borderColor}`,
+          left: isMobile ? "0" : `${CARD_CENTER_LEFT}%`,
+          transform: isMobile ? "translateY(-50%)" : "translate(-50%, -50%)",
+          width: isMobile ? "100%" : CARD_WIDTH_STYLE,
+          height: isMobile ? "100%" : CARD_HEIGHT_STYLE,
+          borderRadius: "1.6rem",
+          border: `1px solid ${borderColor}`,
           background: cardBackground,
           boxShadow: glowShadow,
-          display: "flex",
           flexDirection: "row",
           alignItems: "stretch",
-          padding: "1.25rem",
-          gap: "1.2rem",
+          padding: "1.8rem",
+          gap: "1.25rem",
           cursor: "pointer",
           overflow: "hidden",
           zIndex: isActive ? 110 : zIndex,
-          backdropFilter: "blur(6px)",
-          pointerEvents: Math.abs(offset) > FAN_CONFIG.maxVisibleOffset ? "none" : "auto",
-          opacity: Math.abs(offset) > FAN_CONFIG.maxVisibleOffset ? 0 : undefined,
-          display: Math.abs(offset) > FAN_CONFIG.maxVisibleOffset + 1 ? "none" : "flex",
+          pointerEvents: Math.abs(offset) > fanConfig.maxVisibleOffset ? "none" : "auto",
+          opacity: Math.abs(offset) > fanConfig.maxVisibleOffset ? 0 : undefined,
+          display: Math.abs(offset) > fanConfig.maxVisibleOffset + 1 ? "none" : "flex",
+          backdropFilter: "blur(18px)",
+          color: "#334155",
         }}
         onMouseEnter={() => onHover(station.uuid)}
         onMouseLeave={() => onHover(null)}
@@ -385,12 +454,28 @@ const StationCardFanItem = memo(
         aria-pressed={isActive}
         aria-label={`Play ${station.name}`}
       >
-        <div
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: "1.2rem",
+            top: "1.2rem",
+            bottom: "1.2rem",
+            width: "2px",
+            borderRadius: "999px",
+            background: `linear-gradient(180deg, rgba(148,163,184,0.2), ${accent})`,
+            opacity: isActive ? 0.9 : 0.45,
+            pointerEvents: "none",
+          }}
+        />
+        <span
+          aria-hidden
           style={{
             position: "absolute",
             inset: 0,
-            borderRadius: "inherit",
-            background: "linear-gradient(135deg, rgba(255,255,255,0.04), transparent 60%)",
+            backgroundImage: "url('/texture.png')",
+            opacity: 0.03,
+            mixBlendMode: "multiply",
             pointerEvents: "none",
           }}
         />
@@ -400,192 +485,305 @@ const StationCardFanItem = memo(
             zIndex: 2,
             flex: 1,
             display: "flex",
-            alignItems: "stretch",
-            gap: "1.25rem",
+            flexDirection: "column",
+            gap: "1.2rem",
+            minWidth: 0,
+            opacity: contentOpacity,
+            transition: "opacity 0.3s ease",
           }}
         >
           <div
             style={{
-              width: "108px",
-              minWidth: "108px",
-              borderRadius: "1.25rem",
-              overflow: "hidden",
-              border: `1px solid ${isActive ? "rgba(34,211,238,0.45)" : "rgba(148,163,184,0.25)"}`,
-              background: station.favicon ? "rgba(15,23,42,0.65)" : accent,
               display: "flex",
+              gap: "1.2rem",
               alignItems: "center",
-              justifyContent: "center",
-              boxShadow: isActive ? "0 10px 20px rgba(34,211,238,0.35)" : "0 15px 30px rgba(2,6,23,0.6)",
-              flexShrink: 0,
+              minWidth: 0,
             }}
           >
-            {station.favicon ? (
-              <img
-                src={station.favicon}
-                alt={`Artwork for ${station.name}`}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                loading="lazy"
-                decoding="async"
-              />
-            ) : (
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  background: accent,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "rgba(248,250,252,0.92)",
-                  fontSize: "2.1rem",
-                  fontWeight: 600,
-                  letterSpacing: "0.05em",
-                }}
-              >
-                {fallbackInitials}
-              </div>
-            )}
-          </div>
-
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.9rem", minWidth: 0 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem", minWidth: 0 }}>
+            <div
+              style={{
+                width: "110px",
+                minWidth: "110px",
+                height: "110px",
+                borderRadius: "1.25rem",
+                overflow: "hidden",
+                border: `1px solid ${artBorderColor}`,
+                background: station.favicon ? "rgba(241,245,249,0.7)" : accent,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 15px 45px rgba(148,163,184,0.25)",
+                flexShrink: 0,
+              }}
+            >
+              {station.favicon ? (
+                <img
+                  src={station.favicon}
+                  alt={`Artwork for ${station.name}`}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: accent,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "2.1rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  {fallbackInitials}
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.65rem", minWidth: 0 }}>
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "flex-start",
-                  gap: "1rem",
+                  gap: "0.75rem",
                   flexWrap: "wrap",
                 }}
               >
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", minWidth: 0 }}>
-                  <h3
-                    style={{
-                      margin: 0,
-                      fontSize: "1.45rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.01em",
-                      color: "rgba(248,250,252,0.98)",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {station.name}
-                  </h3>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "0.4rem",
-                      fontSize: "0.78rem",
-                      color: "rgba(203,213,225,0.9)",
-                    }}
-                  >
-                    {metadataLine.map((label, metaIndex) => (
-                      <span key={`${station.uuid}-meta-${metaIndex}`} style={{ display: "inline-flex", alignItems: "center" }}>
-                        {label}
-                        {metaIndex < metadataLine.length - 1 ? <span style={{ margin: "0 0.3rem" }}>•</span> : null}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.35rem" }}>
-                  <span
-                    style={{
-                      fontSize: "0.7rem",
-                      letterSpacing: "0.2em",
-                      textTransform: "uppercase",
-                      color: "rgba(248,250,252,0.65)",
-                    }}
-                  >
-                    {stationOrder}/{totalStations}
-                  </span>
-                  {isActive && (
-                    <span
-                      className="now-playing-pill"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.4rem",
-                        padding: "0.3rem 0.75rem",
-                        borderRadius: "999px",
-                        background: "rgba(8,145,178,0.12)",
-                        border: "1px solid rgba(45,212,191,0.45)",
-                        color: "rgba(186,230,253,0.95)",
-                        fontSize: "0.72rem",
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      <span className="now-playing-eq" aria-hidden="true">
-                        <span />
-                        <span />
-                        <span />
-                      </span>
-                      Live
-                    </span>
-                  )}
-                </div>
+                <span
+                  style={{
+                    fontSize: "0.55rem",
+                    letterSpacing: "0.5em",
+                    textTransform: "uppercase",
+                    color: "rgba(100,116,139,0.8)",
+                  }}
+                >
+                  Station card
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: "rgba(100,116,139,0.7)",
+                  }}
+                >
+                  #{stationOrder}/{totalStations}
+                </span>
               </div>
-              <p
+              <h3
                 style={{
                   margin: 0,
-                  fontSize: "0.92rem",
-                  lineHeight: 1.45,
-                  color: "rgba(226,232,240,0.9)",
+                  fontSize: "1.4rem",
+                  fontWeight: 700,
+                  letterSpacing: "-0.01em",
+                  color: "#0f172a",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
-                {station.highlight?.trim() || descriptorReason}
-              </p>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "0.5rem",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                {displayTags.map((tag) => (
-                  <span
-                    key={`${station.uuid}-${tag}`}
-                    style={{
-                      fontSize: "0.7rem",
-                      padding: "0.25rem 0.75rem",
-                      borderRadius: "999px",
-                      background: "rgba(15,23,42,0.75)",
-                      border: "1px solid rgba(148,163,184,0.3)",
-                      color: "rgba(248,250,252,0.9)",
-                      textTransform: "none",
-                      letterSpacing: "0.03em",
-                    }}
-                  >
-                    {tag.toLowerCase()}
-                  </span>
-                ))}
-              </div>
-
-              {healthMeta && (
+                {station.name}
+              </h3>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  color: "rgba(71,85,105,0.84)",
+                  fontSize: "0.85rem",
+                }}
+              >
+                <span>{locationLine}</span>
                 <span
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "0.35rem",
-                    fontSize: "0.7rem",
-                    padding: "0.3rem 0.85rem",
-                    borderRadius: "999px",
-                    ...getHealthBadgeStyle(healthMeta.status),
+                    fontSize: "0.72rem",
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: healthColor,
                   }}
                 >
-                  {healthIcon}
-                  {healthMeta.label}
+                  <span
+                    style={{
+                      width: "6px",
+                      height: "6px",
+                      borderRadius: "999px",
+                      background: healthColor,
+                      boxShadow: `0 0 10px ${healthColor}`,
+                    }}
+                  />
+                  {reliabilityIcon}
+                  {reliabilityLabel}
                 </span>
-              )}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0.45rem",
+                  alignItems: "center",
+                }}
+              >
+                {primaryTag && (
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      padding: "0.35rem 0.85rem",
+                      borderRadius: "999px",
+                      background: "rgba(241,245,249,0.5)",
+                      border: "1px solid rgba(226,232,240,0.8)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.2em",
+                    }}
+                  >
+                    {primaryTag}
+                  </span>
+                )}
+                {remainingTagCount > 0 && (
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      padding: "0.35rem 0.85rem",
+                      borderRadius: "999px",
+                      border: "1px dashed rgba(148,163,184,0.4)",
+                      color: "rgba(100,116,139,0.8)",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    +{remainingTagCount} tag{remainingTagCount > 1 ? "s" : ""}
+                  </span>
+                )}
+                <span
+                  style={{
+                    fontSize: "0.7rem",
+                    padding: "0.35rem 0.85rem",
+                    borderRadius: "999px",
+                    border: "1px solid rgba(226,232,240,0.8)",
+                    background: "rgba(241,245,249,0.5)",
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {bitrateChip}
+                </span>
+              </div>
             </div>
+          </div>
+          <div
+            style={{
+              width: "100%",
+              height: "1px",
+              background: "linear-gradient(90deg, transparent, rgba(226,232,240,0.8), transparent)",
+              opacity: 0.6,
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <p
+              style={{
+                flex: 1,
+                margin: 0,
+                fontSize: "0.95rem",
+                lineHeight: 1.5,
+                color: "rgba(51,65,85,0.92)",
+                minWidth: 0,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {description}
+            </p>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.45rem 1.2rem",
+                borderRadius: "999px",
+                border: "1px solid rgba(226,232,240,0.8)",
+                background: isActive ? "rgba(241,245,249,0.8)" : "rgba(241,245,249,0.5)",
+                color: "#0f172a",
+                textTransform: "uppercase",
+                fontSize: "0.7rem",
+                letterSpacing: "0.25em",
+                boxShadow: isActive ? "0 8px 20px rgba(148,163,184,0.2)" : "0 4px 10px rgba(148,163,184,0.1)",
+              }}
+            >
+              <IconPlayerPlayFilled size={14} />
+              {playLabel}
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.8rem",
+              fontSize: "0.65rem",
+              letterSpacing: "0.35em",
+              textTransform: "uppercase",
+              color: "rgba(100,116,139,0.8)",
+            }}
+          >
+            <span>Dial</span>
+            <div
+              style={{
+                position: "relative",
+                flex: 1,
+                height: "6px",
+                borderRadius: "999px",
+                background: "rgba(226,232,240,0.8)",
+                overflow: "hidden",
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: `${Math.max(10, frequencyPercent)}%`,
+                  background: "linear-gradient(90deg, rgba(59,130,246,0.3), rgba(94,234,212,0.7))",
+                }}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  left: `calc(${frequencyPercent}% - 6px)`,
+                  top: "50%",
+                  width: "12px",
+                  height: "12px",
+                  borderRadius: "999px",
+                  background: "rgba(14,165,233,0.85)",
+                  boxShadow: "0 0 12px rgba(14,165,233,0.4)",
+                  transform: "translateY(-50%)",
+                }}
+              />
+            </div>
+            <span
+              style={{
+                fontSize: "0.85rem",
+                letterSpacing: "0.15em",
+                color: "#475569",
+              }}
+            >
+              {frequencyLabel}
+            </span>
           </div>
         </div>
       </motion.button>
@@ -598,7 +796,17 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [localActiveId, setLocalActiveId] = useState<string | null>(descriptor.stations[0]?.uuid ?? null);
   const [visibleStations, setVisibleStations] = useState(() => descriptor.stations.slice(0, CARD_STACK_LIMIT));
+  const [isMobile, setIsMobile] = useState(false);
   const wheelDeltaRef = useRef(0);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const fanConfig = isMobile ? MOBILE_FAN_CONFIG : FAN_CONFIG;
 
   const activeStation = useMemo(() => {
     const id = activeStationId || localActiveId;
@@ -613,12 +821,19 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
   }, [activeStation?.uuid, activeStationId, localActiveId, visibleStations]);
 
   useEffect(() => {
-    const next = descriptor.stations.slice(0, CARD_STACK_LIMIT);
-    // Ensure no duplicates based on UUID
-    const uniqueStations = next.filter((station, index, self) =>
+    // Ensure we have enough cards for the stack effect, but don't duplicate if we have a valid list
+    // The issue "repeated data" likely comes from the carousel logic wrapping around or duplicating items for the infinite effect
+    // If the user sees "repeated data" visually, it might be because we are showing the same station multiple times in the stack
+
+    const uniqueStations = descriptor.stations.filter((station, index, self) =>
       index === self.findIndex((s) => s.uuid === station.uuid)
     );
+
+    // If we have very few stations, we might need to duplicate to fill the stack, 
+    // BUT if the user complains about it, we should probably just show what we have.
+    // Let's just use the unique list.
     setVisibleStations(uniqueStations);
+
     if (uniqueStations[0] && !activeStationId) {
       setLocalActiveId(uniqueStations[0].uuid);
     }
@@ -767,16 +982,16 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
       style={{
         width: "100%",
         maxWidth: "min(960px, 95vw)",
-        color: "rgba(241,245,249,0.95)",
-        display: "flex",
+        color: "rgba(51,65,85,0.95)",
+        display: isSceneLoading ? "flex" : "none", // HIDE WHEN LOADED
         flexDirection: "column",
         gap: "0.65rem",
         textAlign: "left",
         minHeight: isSceneLoading ? "200px" : undefined,
         justifyContent: isSceneLoading ? "center" : "flex-start",
-        background: "rgba(8,12,32,0.65)",
+        background: "rgba(255,255,255,0.5)",
         borderRadius: "1.25rem",
-        border: "1px solid rgba(148,163,184,0.25)",
+        border: "1px solid rgba(226,232,240,0.8)",
         padding: "1.35rem 1.6rem",
         margin: "0 auto",
       }}
@@ -788,7 +1003,7 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
               fontSize: "0.6rem",
               letterSpacing: "0.4em",
               textTransform: "uppercase",
-              color: "rgba(226,232,240,0.65)",
+              color: "rgba(100,116,139,0.65)",
               fontWeight: 600,
             }}
           >
@@ -801,12 +1016,12 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
               fontWeight: 600,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              color: "#fefce8",
+              color: "#0f172a",
             }}
           >
             {loadingTitle}
           </h2>
-          <p style={{ margin: 0, fontSize: "0.92rem", lineHeight: 1.5, color: "rgba(226,232,240,0.85)" }}>{loadingHint}</p>
+          <p style={{ margin: 0, fontSize: "0.92rem", lineHeight: 1.5, color: "rgba(71,85,105,0.85)" }}>{loadingHint}</p>
           {loadingSteps.length > 0 && (
             <div
               style={{
@@ -816,7 +1031,7 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
                 fontSize: "0.62rem",
                 letterSpacing: "0.32em",
                 textTransform: "uppercase",
-                color: "rgba(203,213,225,0.75)",
+                color: "rgba(100,116,139,0.75)",
               }}
             >
               {loadingSteps.map((step) => (
@@ -825,63 +1040,7 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
             </div>
           )}
         </div>
-      ) : (
-        <>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-            <span
-              style={{
-                fontSize: "0.6rem",
-                letterSpacing: "0.4em",
-                textTransform: "uppercase",
-                color: "rgba(226,232,240,0.6)",
-                fontWeight: 500,
-              }}
-            >
-              Curated mood
-            </span>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "flex-start",
-                gap: "0.55rem",
-                padding: "0.5rem 1rem",
-                borderRadius: "999px",
-                border: "1px solid rgba(248,250,252,0.35)",
-                background: "rgba(8, 28, 64, 0.45)",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.25em",
-                color: "#fefce8",
-                boxShadow: "0 20px 45px rgba(7, 19, 41, 0.45)",
-              }}
-            >
-              {moodLabel}
-            </span>
-          </div>
-          <p style={{ margin: 0, fontSize: "0.88rem", lineHeight: 1.5, color: "rgba(226,232,240,0.85)" }}>{descriptorReason}</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "1.2rem" }}>
-            {sceneStats.map((stat) => (
-              <div key={stat.label} style={{ minWidth: "100px" }}>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.65rem",
-                    letterSpacing: "0.5em",
-                    textTransform: "uppercase",
-                    color: "rgba(226,232,240,0.55)",
-                    fontWeight: 500,
-                  }}
-                >
-                  {stat.label}
-                </p>
-                <p style={{ margin: 0, fontSize: "1.1rem", fontWeight: 600, color: "#f8fafc" }}>{stat.value}</p>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      ) : null}
     </motion.div>
   );
 
@@ -893,18 +1052,18 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
           position: "relative",
           width: "100%",
           height: "100%",
-          backgroundColor: BASE_BACKGROUND,
+          background: BASE_BACKGROUND,
           padding: "3rem 2.5rem",
           borderRadius: "1.5rem",
           overflow: "hidden",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "rgba(255, 255, 255, 0.85)",
+          color: "rgba(51,65,85,0.85)",
           fontSize: "1rem",
           letterSpacing: "0.3em",
           textTransform: "uppercase",
-          boxShadow: "0 25px 60px rgba(15, 35, 70, 0.35)",
+          boxShadow: "0 25px 60px rgba(148,163,184,0.15)",
         }}
       >
         Awaiting AI curation…
@@ -919,7 +1078,7 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
         position: "relative",
         width: "100%",
         minHeight: SCENE_MIN_HEIGHT,
-        backgroundColor: BASE_BACKGROUND,
+        background: BASE_BACKGROUND,
         padding: "0.75rem 1.5rem 1.8rem",
         borderRadius: "1.5rem",
         overflow: "hidden",
@@ -928,14 +1087,14 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
         alignItems: "center",
         justifyContent: "flex-start",
         gap: "0.65rem",
-        boxShadow: "0 30px 80px rgba(5, 12, 30, 0.55)",
+        boxShadow: "0 30px 80px rgba(148,163,184,0.25)",
       }}
     >
       <div
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage: `${moodBackground}, radial-gradient(circle at 20% 20%, rgba(255,255,255,0.18), transparent 48%)`,
+          backgroundImage: `${moodBackground}, radial-gradient(circle at 20% 20%, rgba(255,255,255,0.8), transparent 48%)`,
           opacity: 0.45,
           pointerEvents: "none",
         }}
@@ -960,16 +1119,16 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
             fontSize: "0.62rem",
             letterSpacing: "0.22em",
             textTransform: "uppercase",
-            color: "rgba(248,250,252,0.55)",
+            color: "rgba(100,116,139,0.55)",
             display: "inline-flex",
             alignItems: "center",
             gap: "0.6rem",
             padding: "0.15rem 0",
           }}
         >
-          <span style={{ width: "28px", height: "1px", background: "rgba(248,250,252,0.25)" }} />
+          <span style={{ width: "28px", height: "1px", background: "rgba(148,163,184,0.25)" }} />
           Arrow Keys · Click to Play · Home/End jump
-          <span style={{ width: "28px", height: "1px", background: "rgba(248,250,252,0.25)" }} />
+          <span style={{ width: "28px", height: "1px", background: "rgba(148,163,184,0.25)" }} />
         </motion.div>
 
         <motion.section
@@ -982,10 +1141,10 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
           style={{
             position: "relative",
             width: "100%",
-            background: "rgba(2,6,23,0.9)",
+            background: "rgba(255,255,255,0.6)",
             borderRadius: "1.6rem",
-            border: "1.5px solid rgba(148,163,184,0.25)",
-            boxShadow: "0 45px 120px rgba(3, 8, 20, 0.65)",
+            border: "1.5px solid rgba(226,232,240,0.8)",
+            boxShadow: "0 45px 120px rgba(148,163,184,0.25)",
             overflow: "visible",
             padding: "1.25rem 1.4rem 1.6rem",
             minHeight: "0",
@@ -1001,7 +1160,7 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
             style={{
               position: "absolute",
               inset: 0,
-              background: "radial-gradient(circle at 20% 25%, rgba(59,130,246,0.12), transparent 60%)",
+              background: "radial-gradient(circle at 20% 25%, rgba(59,130,246,0.05), transparent 60%)",
               pointerEvents: "none",
             }}
           />
@@ -1035,11 +1194,12 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
               width: "100%",
               maxWidth: "min(980px, 92vw)",
               margin: "0 auto 0.1rem",
+              minHeight: isMobile ? "320px" : `${CARD_STAGE_HEIGHT}px`,
             }}
           >
             {visibleStations.map((station, index) => (
               <StationCardFanItem
-                key={station.uuid}
+                key={`${station.uuid}-${index}`}
                 station={station}
                 index={index}
                 activeIndex={activeIndex}
@@ -1051,6 +1211,7 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
                 moodLabel={moodLabel}
                 onHover={setHoveredId}
                 onClick={(candidate) => setActiveStation(candidate, { autoplay: true })}
+                fanConfig={fanConfig}
               />
             ))}
           </div>
@@ -1099,27 +1260,26 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
 
             @media (max-width: 1024px) {
               .compact-now-playing {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
+                gap: 0.75rem;
+                padding: 0.75rem 1rem;
               }
               .compact-player-controls {
-                width: 100%;
-                justify-content: flex-start;
-                flex-wrap: wrap;
+                width: auto;
                 gap: 0.5rem;
               }
               .compact-player-controls button {
-                flex: 1;
-                min-width: 82px;
+                width: 40px !important;
+                height: 40px !important;
+                min-width: 0;
               }
             }
 
             @media (max-width: 768px) {
               .station-list-card {
-                flex-direction: column;
-                align-items: flex-start;
-                left: 50% !important;
+                /* Keep row layout on mobile to prevent vertical overflow */
+                flex-direction: row;
+                align-items: stretch;
+                left: 0 !important;
               }
             }
 

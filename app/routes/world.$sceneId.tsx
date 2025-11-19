@@ -1,8 +1,7 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { Link, useLoaderData, useFetcher, type MetaFunction } from "@remix-run/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { Button, Loader, Text, TextInput, Badge } from "@mantine/core";
+import { Loader, Text, Badge } from "@mantine/core";
 import { IconSparkles } from "@tabler/icons-react";
 
 import { SceneManager } from "~/components/SceneManager";
@@ -13,6 +12,7 @@ import type { SceneDescriptor } from "~/scenes/types";
 import { usePlayerStore } from "~/state/playerStore";
 import { useFavorites } from "~/hooks/useFavorites";
 import { useRecentStations } from "~/hooks/useRecentStations";
+import JourneyComposer from "~/components/JourneyComposer";
 
 const SCENES = [
   {
@@ -95,10 +95,10 @@ export default function WorldSceneRoute() {
     fetcher.state === "submitting" || fetcher.state === "loading"
       ? "loading"
       : fetcher.data?.error
-      ? "error"
-      : fetcher.data?.descriptor
-      ? "success"
-      : "idle";
+        ? "error"
+        : fetcher.data?.descriptor
+          ? "success"
+          : "idle";
   const error = fetcher.data?.error;
 
   useEffect(() => {
@@ -185,17 +185,6 @@ export default function WorldSceneRoute() {
     };
   }, [status]);
 
-  const handlePromptSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const prompt = inputPrompt.trim();
-      if (!prompt) return;
-      setInputPrompt(prompt);
-      runDescriptorRequest({ prompt });
-    },
-    [inputPrompt, runDescriptorRequest]
-  );
-
   const handleVoiceTranscript = useCallback(
     (transcript: string) => {
       setInputPrompt(transcript);
@@ -229,97 +218,162 @@ export default function WorldSceneRoute() {
     [status, loadingTitle, loadingHint]
   );
 
+  const hasDescriptor = !!descriptor;
+  const isOracleState = !hasDescriptor && (status === "idle" || status === "error");
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="sticky top-0 z-30 border-b border-white/5 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-          <Link to="/" className="text-sm font-semibold text-slate-200" prefetch="intent">
-            ← Back to Local
-          </Link>
-          <nav className="flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-slate-300">
-            {scenes.map((candidate) =>
-              candidate.id === scene.id ? (
-                <span key={candidate.id} className="rounded-full bg-white/10 px-3 py-1 text-slate-100" aria-current="page">
-                  {candidate.label}
-                </span>
-              ) : (
-                <Link
-                  key={candidate.id}
-                  to={`/world/${candidate.id}`}
-                  className="rounded-full px-3 py-1 text-slate-400 transition hover:bg-white/10 hover:text-slate-100"
-                  prefetch="intent"
-                >
-                  {candidate.label}
-                </Link>
-              )
-            )}
-          </nav>
-        </div>
-      </header>
+    <div
+      className="min-h-screen text-slate-900 relative overflow-hidden"
+      style={{
+        background: "#f8fafc",
+      }}
+    >
+      {/* Background Ambience */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{ backgroundImage: "url('/texture.png')", mixBlendMode: "multiply" }}
+        />
+        <div className="absolute -top-40 left-[-10%] w-[60%] h-[60%] bg-sky-200/40 blur-[160px] rounded-full" />
+        <div className="absolute bottom-[-30%] right-[-5%] w-[50%] h-[50%] bg-rose-200/30 blur-[160px] rounded-full" />
+        <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent to-transparent" />
+      </div>
 
-      <main className="mx-auto flex min-h-[calc(100vh-80px)] max-w-6xl flex-col gap-8 px-6 py-8">
-        <section className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-900/40 p-6 shadow-2xl">
-          <form onSubmit={handlePromptSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <TextInput
-              value={inputPrompt}
-              onChange={(event) => setInputPrompt(event.currentTarget.value)}
-              placeholder="Filter stations..."
-              className="flex-1"
-              size="md"
-              disabled={status === "loading"}
-              type="search"
-              data-autofocus
-            />
-            <div className="flex items-center gap-2">
-              <Button
-                type="submit"
-                size="md"
-                radius="xl"
-                leftSection={<IconSparkles size={16} />}
-                loading={status === "loading"}
-              >
-                Refine Mix
-              </Button>
-              <VoiceInput
-                onTranscript={handleVoiceTranscript}
-                onStatusChange={(_, message) => setVoiceMessage(message ?? null)}
-                disabled={status === "loading"}
+      <div
+        className="relative mx-auto flex h-full min-h-screen flex-col px-4 pt-6 md:px-6"
+        style={{ paddingBottom: "calc(8rem + env(safe-area-inset-bottom, 0px))" }}
+      >
+        {/* Header - Scene Navigation */}
+        <header className={`flex items-center justify-center transition-all duration-500 ${isOracleState ? "py-10" : "py-6"}`}>
+          {/* Scene Pills - Only show in Journey state */}
+          {!isOracleState && (
+            <nav className="flex items-center gap-1 rounded-full border border-slate-200 bg-white/60 px-2 py-1 shadow-sm backdrop-blur-lg">
+              {scenes.map(({ id, label }) => {
+                const active = id === scene.id;
+                return (
+                  <Link
+                    key={id}
+                    to={`/world/${id}`}
+                    className={`px-4 py-2 text-[0.6rem] font-semibold uppercase tracking-[0.35em] rounded-full transition-all ${active ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:text-slate-900"
+                      }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col relative">
+
+          {/* ORACLE STATE: Centered Prompt */}
+          {isOracleState && (
+            <div className="flex-1 flex flex-col items-center justify-center -mt-20 animate-in fade-in zoom-in duration-700 slide-in-from-bottom-8">
+              <div className="mb-8 text-center space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-600 text-[0.65rem] font-semibold uppercase tracking-[0.35em] shadow-sm">
+                  <IconSparkles size={12} />
+                  <span>Vibe Engine</span>
+                </div>
+                <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight">
+                  Where to next?
+                </h1>
+                <p className="text-slate-500 text-lg max-w-md mx-auto leading-relaxed">
+                  Describe a mood, a memory, or a place. The AI will curate a journey just for you.
+                </p>
+              </div>
+
+              <JourneyComposer
+                hero
+                tone="light"
+                value={inputPrompt}
+                onChange={setInputPrompt}
+                onSubmit={({ prompt }) => {
+                  const nextPrompt = (prompt ?? "").trim();
+                  if (!nextPrompt) return;
+                  setInputPrompt(nextPrompt);
+                  runDescriptorRequest({ prompt: nextPrompt });
+                }}
+                loading={false}
+                placeholder="e.g. 'Cyberpunk Tokyo rain' or '70s road trip'"
+                ctaLabel="Curate Journey"
+                secondarySlot={
+                  <div className="flex justify-center">
+                    <VoiceInput
+                      onTranscript={handleVoiceTranscript}
+                      onStatusChange={(_, message) => setVoiceMessage(message ?? null)}
+                      disabled={false}
+                    />
+                  </div>
+                }
               />
+
+              {/* Quick Suggestions */}
+              <div className="mt-12 flex flex-wrap justify-center gap-3 opacity-60 hover:opacity-100 transition-opacity">
+                {["Midnight Jazz in Paris", "Lofi Study Beats", "High Energy Gym", "Sunday Morning Coffee"].map(suggestion => (
+                  <button
+                    key={suggestion}
+                    onClick={() => {
+                      setInputPrompt(suggestion);
+                      runDescriptorRequest({ prompt: suggestion });
+                    }}
+                    className="px-4 py-2 rounded-full bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-500 hover:text-slate-900 transition-all shadow-sm"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
-          </form>
-
-          {voiceMessage && (
-            <Text fz="xs" c="rgba(239, 246, 255, 0.65)">
-              {voiceMessage}
-            </Text>
           )}
 
-          {status === "error" && error && (
-            <Badge color="red" variant="light" radius="xl">
-              {error}
-            </Badge>
+          {/* JOURNEY STATE: Results & Floating Controls */}
+          {!isOracleState && (
+            <div className="flex-1 relative flex flex-col h-full">
+              {/* The Scene (Card Stack) */}
+              <div className="flex-1 relative rounded-[32px] overflow-hidden border border-slate-200 bg-white/40 shadow-xl backdrop-blur-2xl">
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/40 via-transparent to-slate-100/20" aria-hidden />
+                {descriptor ? (
+                  <SceneManager
+                    descriptor={descriptor}
+                    activeStationId={nowPlaying?.uuid}
+                    onStationSelect={handleStationSelect}
+                    className="h-full absolute inset-0 z-10"
+                    fallback={<SceneLoadingFallback />}
+                    sceneStatus={sceneStatus}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <CuratingOverlay title={loadingTitle} hint={loadingHint} steps={LOADING_STEPS} />
+                  </div>
+                )}
+              </div>
+
+              {/* Floating Control Bar (Compact Composer) */}
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none z-10 md:hidden">
+                <div className="pointer-events-auto shadow-xl">
+                  <JourneyComposer
+                    compact
+                    tone="light"
+                    value={inputPrompt}
+                    onChange={setInputPrompt}
+                    onSubmit={({ prompt }) => {
+                      const nextPrompt = (prompt ?? "").trim();
+                      if (!nextPrompt) return;
+                      setInputPrompt(nextPrompt);
+                      runDescriptorRequest({ prompt: nextPrompt });
+                    }}
+                    loading={status === "loading"}
+                    placeholder="Refine your vibe..."
+                    ctaLabel="Update"
+                  />
+                </div>
+              </div>
+            </div>
           )}
 
-          <div className="relative min-h-[48rem] overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
-            {descriptor ? (
-              <SceneManager
-                descriptor={descriptor}
-                activeStationId={nowPlaying?.uuid}
-                onStationSelect={handleStationSelect}
-                className="h-full min-h-[48rem]"
-                fallback={<SceneLoadingFallback />}
-                sceneStatus={sceneStatus}
-              />
-            ) : status !== "loading" ? (
-              <EmptyPromptState />
-            ) : null}
-
-            {status === "loading" && !descriptor && (
-              <CuratingOverlay title={loadingTitle} hint={loadingHint} steps={LOADING_STEPS} />
-            )}
-          </div>
-        </section>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
@@ -332,23 +386,23 @@ type CuratingOverlayProps = {
 
 function CuratingOverlay({ title, hint, steps }: CuratingOverlayProps) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-slate-950/85 px-6 text-center text-slate-100 backdrop-blur">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.65em] text-slate-300">
-        <span className="h-2 w-2 rounded-full bg-emerald-400">
-          <span className="block h-2 w-2 animate-ping rounded-full bg-emerald-300" aria-hidden="true" />
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-white/80 px-6 text-center text-slate-900 backdrop-blur-xl border border-slate-200">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.65em] text-slate-500">
+        <span className="h-2 w-2 rounded-full bg-emerald-500">
+          <span className="block h-2 w-2 animate-ping rounded-full bg-emerald-400" aria-hidden="true" />
         </span>
         Curating your musical journey
       </div>
       <div className="max-w-xl space-y-3">
-        <p className="text-2xl font-semibold leading-snug text-white">{title}</p>
-        <p className="text-sm text-slate-300">
-          <span className="inline-block animate-pulse text-base text-slate-100/90">{hint}</span>
+        <p className="text-2xl font-bold leading-snug text-slate-900">{title}</p>
+        <p className="text-sm text-slate-500">
+          <span className="inline-block animate-pulse text-base text-slate-700">{hint}</span>
         </p>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-3 text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-slate-400">
+      <div className="flex flex-wrap items-center justify-center gap-3 text-[0.65rem] font-bold uppercase tracking-[0.35em] text-slate-400">
         {steps.map((step) => (
           <span key={step} className="flex items-center gap-1 text-slate-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-white/30" aria-hidden="true" />
+            <span className="h-1.5 w-1.5 rounded-full bg-slate-300" aria-hidden="true" />
             {step}
           </span>
         ))}
@@ -359,13 +413,13 @@ function CuratingOverlay({ title, hint, steps }: CuratingOverlayProps) {
 
 function EmptyPromptState() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center text-slate-200/85">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-indigo-100">
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center text-slate-500">
+      <div className="rounded-2xl border border-slate-200 bg-white/50 p-4 text-indigo-500">
         <IconSparkles size={32} />
       </div>
       <div className="space-y-2">
-        <p className="text-lg font-semibold text-slate-50">Ask the Passport for a vibe</p>
-        <p className="text-sm text-slate-300">Try prompts like “psychedelic fusion jazz” or “slow morning in Paris”.</p>
+        <p className="text-lg font-semibold text-slate-900">Ask the Passport for a vibe</p>
+        <p className="text-sm text-slate-500">Try prompts like “psychedelic fusion jazz” or “slow morning in Paris”.</p>
       </div>
     </div>
   );
@@ -373,8 +427,8 @@ function EmptyPromptState() {
 
 function SceneLoadingFallback() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-slate-200/80">
-      <Loader color="ocean.4" size="lg" />
+    <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-slate-500">
+      <Loader color="ocean.6" size="lg" />
       <p>Preparing the card stack…</p>
     </div>
   );

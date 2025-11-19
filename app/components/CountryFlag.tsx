@@ -69,9 +69,10 @@ type CountryFlagProps = {
   title: string;
   width?: number;
   height?: number;
+  className?: string;
 };
 
-export function CountryFlag({ iso, size = 48, title, width, height }: CountryFlagProps) {
+export function CountryFlag({ iso, size = 48, title, width, height, className }: CountryFlagProps) {
   const flagWidth = width ?? size;
   const flagHeight = height ?? size;
   const flagRadius = Math.min(flagWidth, flagHeight) / 6;
@@ -82,11 +83,13 @@ export function CountryFlag({ iso, size = 48, title, width, height }: CountryFla
         svg
         countryCode={iso}
         title={title}
+        className={className}
         style={{
           width: flagWidth,
           height: flagHeight,
           borderRadius: flagRadius,
           boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+          objectFit: "cover",
         }}
       />
     );
@@ -99,6 +102,7 @@ export function CountryFlag({ iso, size = 48, title, width, height }: CountryFla
       variant="gradient"
       gradient={{ from: "cyan", to: "violet", deg: 135 }}
       aria-label="Global"
+      className={className}
       style={{
         width: flagWidth,
         height: flagHeight,

@@ -14,8 +14,9 @@ Radio Passport is a beautiful, web-based radio player that lets you explore and 
 - **🔥 Trending Radar**: Votes & clicktrend surface what's hot right now across the globe
 - **🔍 Smart Search**: Filter countries instantly and jump via Quick Retune
 - **⭐ Favorites**: Heart any station and find it again in seconds
-- **🎨 Designed for Discovery**: Dark passport aesthetic with Mantine + Tailwind polish
-- **📱 Fully Responsive**: Optimised layouts from phones to ultrawide displays
+- **🎨 Designed for Discovery**: Light, airy discovery aesthetic with Mantine + Tailwind polish (updated Oct 2025)
+- **�️ Raptor Mini (Preview)**: Compact, low-height player for one-handed mobile use (experimental). Toggle with `ENABLE_RAPTOR_MINI=true` in local `.env`. The Raptor mini will be enabled for all clients after completion of the preview rollout.
+- **�📱 Fully Responsive**: Optimised layouts from phones to ultrawide displays
 
 ## 🚀 Quick Start
 

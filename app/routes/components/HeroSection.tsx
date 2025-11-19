@@ -173,13 +173,12 @@ export function HeroSection({
       onPointerEnter={() => setHeroHovered(true)}
       onPointerLeave={() => setHeroHovered(false)}
       style={{
-        backgroundImage:
-          'linear-gradient(rgba(1, 26, 55, 0.85), rgba(1, 26, 55, 0.75)), url(/RG-HERO.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundBlendMode: 'normal',
+        background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
         position: 'relative',
         overflow: 'hidden',
+        borderRadius: '1rem',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+        border: '1px solid #e8e8e8',
       }}
     >
       {/* Floating Music Notes Animation - Random & Stable */}
@@ -188,8 +187,8 @@ export function HeroSection({
           <motion.div
             key={note.id}
             className="absolute text-2xl"
-            initial={{ 
-              x: `${note.startX}vw`, 
+            initial={{
+              x: `${note.startX}vw`,
               y: `${note.startY}%`,
               rotate: note.rotation,
               scale: note.scale1,
@@ -210,7 +209,7 @@ export function HeroSection({
             }}
             style={{
               filter: `blur(${note.blur}px)`,
-              color: 'rgba(199,158,73,0.45)',
+              color: 'rgba(71, 85, 105, 0.15)',
             }}
           >
             {note.note}
@@ -218,18 +217,18 @@ export function HeroSection({
         ))}
       </div>
 
-      <div className="relative z-10 flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-        <div className="max-w-2xl space-y-6">
+      <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between md:gap-8">
+        <div className="max-w-2xl space-y-5 sm:space-y-6">
           <motion.span
-            className="brand-hero__ticker"
+            className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm ring-1 ring-slate-200"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
             role="status"
             aria-live="polite"
           >
-            <span className="brand-hero__ticker-icon">
-              <IconCompass size={16} />
+            <span className="text-indigo-500">
+              <IconCompass size={14} />
             </span>
             <AnimatePresence initial={false} mode="wait">
               <motion.span
@@ -245,23 +244,25 @@ export function HeroSection({
           </motion.span>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <PassportStampIcon size={64} id="preview" />
+              <div className="rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-100">
+                <PassportStampIcon size={56} id="preview" />
+              </div>
               <div className="flex flex-col">
                 <motion.span
-                  className="hero-wordmark text-3xl md:text-4xl leading-none"
+                  className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl md:text-4xl"
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, ease: "easeOut", delay: 0.18 }}
                 >
                   Radio Passport
                 </motion.span>
-                <span className="logo-subtitle mt-1 block">Global sound atlas</span>
+                <span className="mt-0.5 text-sm font-medium text-slate-500">Global sound atlas</span>
               </div>
             </div>
             <AnimatePresence initial={false} mode="wait">
               <motion.h1
                 key={HERO_TAGLINES[heroTaglineIndex]}
-                className="text-xl font-semibold text-slate-100 md:text-2xl md:leading-tight"
+                className="text-lg font-medium text-slate-600 sm:text-xl md:text-2xl md:leading-tight"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -16 }}
@@ -271,11 +272,11 @@ export function HeroSection({
               </motion.h1>
             </AnimatePresence>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <Tooltip label="Begin listening with curated picks" position="top" withArrow>
               <button
                 type="button"
-                className="cta-primary"
+                className="flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg active:scale-95 w-full justify-center sm:w-auto"
                 onClick={onStartListening}
                 onMouseEnter={onHoverSound}
                 onFocus={onHoverSound}
@@ -289,7 +290,7 @@ export function HeroSection({
             <Tooltip label="Quickly jump to a region or station" position="top" withArrow>
               <button
                 type="button"
-                className="cta-secondary"
+                className="flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 transition-all hover:bg-slate-50 hover:text-slate-900 hover:shadow-md active:scale-95 w-full justify-center sm:w-auto"
                 onClick={onQuickRetune}
                 aria-label="Browse world atlas"
                 title="Browse world atlas"
@@ -302,49 +303,34 @@ export function HeroSection({
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div
-              className="rounded-xl border p-3"
-              style={{
-                background: "rgba(2, 27, 47, 0.65)",
-                borderColor: "rgba(92, 158, 173, 0.28)",
-                backdropFilter: "blur(14px)",
-              }}
+              className="rounded-xl border p-3 bg-white/60 backdrop-blur-md border-slate-200 shadow-sm"
             >
-              <Text size="xs" c="rgba(244,237,224,0.7)" fw={600}>
+              <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: "0.05em" }}>
                 Countries
               </Text>
-              <Text size="lg" fw={700} c={BRAND.beige}>
+              <Text size="lg" fw={800} c="slate.9">
                 {topCountries.length.toLocaleString()}
               </Text>
             </div>
             <div
-              className="rounded-xl border p-3"
-              style={{
-                background: "rgba(2, 27, 47, 0.65)",
-                borderColor: "rgba(92, 158, 173, 0.28)",
-                backdropFilter: "blur(14px)",
-              }}
+              className="rounded-xl border p-3 bg-white/60 backdrop-blur-md border-slate-200 shadow-sm"
             >
-              <Text size="xs" c="rgba(244,237,224,0.7)" fw={600}>
+              <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: "0.05em" }}>
                 Stations
               </Text>
-              <Text size="lg" fw={700} c={BRAND.beige}>
+              <Text size="lg" fw={800} c="slate.9">
                 {(totalStations / 1000).toFixed(0)}k
               </Text>
             </div>
             <div
-              className="rounded-xl border p-3"
-              style={{
-                background: "rgba(2, 27, 47, 0.65)",
-                borderColor: "rgba(92, 158, 173, 0.28)",
-                backdropFilter: "blur(14px)",
-              }}
+              className="rounded-xl border p-3 bg-white/60 backdrop-blur-md border-slate-200 shadow-sm"
             >
-              <Text size="xs" c="rgba(244,237,224,0.7)" fw={600}>
+              <Text size="xs" c="dimmed" fw={600} tt="uppercase" style={{ letterSpacing: "0.05em" }}>
                 Continents
               </Text>
-              <Text size="lg" fw={700} c={BRAND.beige}>
+              <Text size="lg" fw={800} c="slate.9">
                 {continents}
               </Text>
             </div>

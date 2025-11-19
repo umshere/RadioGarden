@@ -1,36 +1,29 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
-import { Link, useLoaderData, useNavigate, useNavigation, useSearchParams, Form, useSubmit } from "@remix-run/react";
+import { useLoaderData, useNavigate, useNavigation, useSearchParams } from "@remix-run/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Badge, Text, Title, Input, Tooltip, ActionIcon } from "@mantine/core";
-import { IconSearch, IconMinimize } from "@tabler/icons-react";
+import { Text, Title } from "@mantine/core";
 import { useSwipeable } from "react-swipeable";
 
-import PassportStampIcon from "~/components/PassportStampIcon";
-import { ClientOnly } from "~/components/ClientOnly";
 import { BRAND } from "~/constants/brand";
 import { getContinent } from "~/utils/geography";
 import { rbFetchJson } from "~/utils/radioBrowser";
 import { normalizeStations } from "~/utils/stations";
 import { rankStations, pickTopStation } from "~/utils/stationMeta";
 import { vibrate } from "~/utils/haptics";
-import type { AiDescriptorState, VoiceCommandPayload } from "~/types/ai";
 import type { Country, Station } from "~/types/radio";
-import { callAiOrchestrator } from "~/utils/aiOrchestrator";
 
 // Components
 import { HeroSection } from "./components/HeroSection";
 import { AtlasFilters } from "./components/AtlasFilters";
 import { AtlasGrid } from "./components/AtlasGrid";
 import { CountryOverview } from "./components/CountryOverview";
-import { PlayerCardStack } from "./components/PlayerCardStack";
 import { StationGrid } from "./components/StationGrid";
 import { QuickRetuneWidget } from "./components/QuickRetuneWidget";
-import { PassportPlayerFooter } from "./components/PassportPlayerFooter";
 import { LoadingView } from "./components/LoadingView";
-import { ListeningModeToggle } from "./components/ListeningModeToggle";
 import { CollapsibleSection } from "./components/CollapsibleSection";
-import { MinimalPlayer } from "./components/MinimalPlayer";
+import JourneyComposer from "~/components/JourneyComposer";
+import MissionLogDrawer from "~/components/MissionLogDrawer";
 
 // Custom Hooks
 import { useRadioPlayer } from "~/hooks/useRadioPlayer";
@@ -68,13 +61,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 }
 
+import { useUIStore } from "~/state/uiStore";
+
 export default function Index() {
   // Remix hooks
   const { countries, stations: loaderStations, selectedCountry: loaderSelectedCountry } = useLoaderData<typeof loader>();
   const [sp] = useSearchParams();
   const navigate = useNavigate();
   const navigation = useNavigation();
-  const submit = useSubmit();
 
   // Route params
   const countryParam = sp.get("country");
@@ -93,32 +87,21 @@ export default function Index() {
   const { triggerHoverStatic } = useHoverAudio();
   const atlas = useAtlasState(countries, player.nowPlaying, selectedCountry);
   const cards = usePlayerCards(recentStations, stations, mode.exploreStations, mode.listeningMode);
-  
+
   // UI state (minimal - most extracted to hooks)
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const [cardDirection, setCardDirection] = useState<1 | -1>(1);
-  const [isQuickRetuneOpen, setIsQuickRetuneOpen] = useState(false);
+  const { isQuickRetuneOpen, setQuickRetuneOpen } = useUIStore();
   const [hasDismissedPlayer, setHasDismissedPlayer] = useState(false);
   const [showNavigationIndicator, setShowNavigationIndicator] = useState(false);
-  const [isMinimalPlayer, setIsMinimalPlayer] = useState(false);
   const stationRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [descriptorState, setDescriptorState] = useState<AiDescriptorState>({
-    status: "idle",
-    mood: null,
-    transcript: null,
-    descriptorSummary: null,
-    sceneDescriptor: null,
-    error: null,
-    updatedAt: null,
-  });
-  const aiDescriptorAbortRef = useRef<AbortController | null>(null);
 
   // Derived data
   const topCountries = useMemo(
     () => [...countries].sort((a, b) => b.stationcount - a.stationcount).slice(0, 80),
     [countries]
   );
-  
+
   const derived = useDerivedData(countries, topCountries, searchQuery, atlas.activeContinent);
   const isRouteTransitioning = navigation.state !== "idle";
   const selectedCountryMeta = selectedCountry ? atlas.countryMap.get(selectedCountry) || null : null;
@@ -160,7 +143,7 @@ export default function Index() {
     favoriteStationIds,
     recentStations,
     setHasDismissedPlayer,
-    setIsQuickRetuneOpen,
+    setIsQuickRetuneOpen: setQuickRetuneOpen,
     setActiveCardIndex,
     handleStartStation,
     topCountries,
@@ -181,108 +164,6 @@ export default function Index() {
     setCardDirection(index > activeCardIndex ? 1 : -1);
     setActiveCardIndex(index);
   }, [activeCardIndex, cards.playerCards.length]);
-
-  const handleVoiceDescriptorRequest = useCallback(
-    async ({ mood, transcript }: VoiceCommandPayload) => {
-      aiDescriptorAbortRef.current?.abort();
-
-      const abortController = new AbortController();
-      aiDescriptorAbortRef.current = abortController;
-
-      setDescriptorState((prev) => ({
-        status: "loading",
-        mood,
-        transcript,
-        descriptorSummary: prev.descriptorSummary,
-        sceneDescriptor: prev.sceneDescriptor,
-        error: null,
-        updatedAt: prev.updatedAt,
-      }));
-
-      mode.setListeningMode("world");
-
-      try {
-        const favoriteIds = Array.from(favoriteStationIds);
-        const recentIds = recentStations.map((station) => station.uuid);
-        const countryContext = selectedCountry ?? player.nowPlaying?.country ?? null;
-        const languageContext = player.nowPlaying?.language ?? null;
-
-        const response = await callAiOrchestrator(
-          {
-            mood,
-            transcript,
-            visual: "card_stack",
-            sceneId: "card_stack",
-            country: countryContext,
-            language: languageContext,
-            preferredCountries: countryContext ? [countryContext] : undefined,
-            preferredLanguages: languageContext ? [languageContext] : undefined,
-            favoriteStationIds: favoriteIds,
-            recentStationIds: recentIds,
-            currentStationId: player.nowPlaying?.uuid ?? null,
-          },
-          { signal: abortController.signal }
-        );
-
-        if (aiDescriptorAbortRef.current !== abortController) {
-          return;
-        }
-
-        setDescriptorState({
-          status: "success",
-          mood: response.mood ?? mood,
-          transcript,
-          descriptorSummary: response.summary,
-          sceneDescriptor: response.descriptor,
-          error: null,
-          updatedAt: Date.now(),
-        });
-
-        await handleWorldMoodRefresh({ mood: response.mood ?? mood ?? undefined });
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          if (aiDescriptorAbortRef.current === abortController) {
-            aiDescriptorAbortRef.current = null;
-            setDescriptorState((prev) => ({
-              ...prev,
-              status: prev.sceneDescriptor ? "success" : "idle",
-              error: null,
-            }));
-          }
-          return;
-        }
-
-        if (aiDescriptorAbortRef.current !== abortController) {
-          return;
-        }
-
-        setDescriptorState((prev) => ({
-          status: "error",
-          mood,
-          transcript,
-          descriptorSummary: prev.descriptorSummary,
-          sceneDescriptor: prev.sceneDescriptor,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Failed to contact AI orchestrator",
-          updatedAt: Date.now(),
-        }));
-      } finally {
-        if (aiDescriptorAbortRef.current === abortController) {
-          aiDescriptorAbortRef.current = null;
-        }
-      }
-    },
-    [
-      mode,
-      handleWorldMoodRefresh,
-      favoriteStationIds,
-      recentStations,
-      selectedCountry,
-      player.nowPlaying,
-    ]
-  );
 
   const handleToggleFavorite = useCallback((station: Station) => {
     vibrate(10);
@@ -369,162 +250,97 @@ export default function Index() {
     else if (activeCardIndex > cards.playerCards.length - 1) setActiveCardIndex(cards.playerCards.length - 1);
   }, [activeCardIndex, cards.playerCards.length]);
 
-  useEffect(() => {
-    return () => {
-      aiDescriptorAbortRef.current?.abort();
-    };
-  }, []);
-
   // Render
   const ariaHidden = isQuickRetuneOpen ? { "aria-hidden": true, style: { pointerEvents: "none" as const, userSelect: "none" as const } } : {};
 
   return (
-    <div className="app-bg relative min-h-screen text-slate-100" style={{
-      backgroundImage: "url(/texture.png)",
-      backgroundRepeat: "repeat",
-      backgroundSize: "400px 400px",
-      backgroundBlendMode: "overlay",
-      overflow: isQuickRetuneOpen ? "hidden" : undefined,
+    <div className="app-bg relative min-h-screen text-slate-900" style={{
+      background: "#e0e5ec",
     }}>
-      <header className="fixed top-0 left-0 right-0 z-50 nav-shell backdrop-blur-lg" {...ariaHidden}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-8">
-          <Link to="/world" className="flex items-center gap-3 text-sm font-semibold text-slate-100 transition-transform hover:scale-105" onClick={handlers.handleBackToWorldView}>
-            <PassportStampIcon size={48} animated={false} id="header" />
-            <div className="hidden md:flex md:flex-col">
-              <span className="hero-wordmark text-lg leading-tight">Radio Passport</span>
-              <span className="logo-subtitle">Sound atlas</span>
-            </div>
-          </Link>
-          
-          <nav className="flex items-center gap-4">
-            <div className="hidden sm:flex sm:items-center sm:gap-1">
-              <Link to="/" className="nav-link" prefetch="intent" preventScrollReset>Local</Link>
-              <Link to="/world" className="nav-link" prefetch="intent" preventScrollReset>World</Link>
-              <a href="#explore" className="nav-link" aria-current="page">Explore</a>
-              <span className="nav-link opacity-40 cursor-not-allowed" aria-disabled="true" title="Coming soon">Favorites</span>
-              <span className="nav-link opacity-40 cursor-not-allowed" aria-disabled="true" title="Coming soon">About</span>
-            </div>
-            
-            <div className="hidden md:block">
-              <Form method="get" onChange={(e) => submit(e.currentTarget)} preventScrollReset>
-                <Input name="q" placeholder="Search countries" size="sm" radius="xl" defaultValue={searchQueryRaw}
-                  leftSection={<IconSearch size={16} stroke={1.6} />} aria-label="Search countries" autoComplete="off"
-                  styles={{ input: { background: "rgba(3, 24, 45, 0.6)", borderColor: "rgba(92, 158, 173, 0.3)", color: "#f4ede0", fontWeight: 500, height: 34 } }}
-                />
-              </Form>
-            </div>
-            
-                        <ListeningModeToggle
-              listeningMode={mode.listeningMode}
-              onToggle={handlers.handleToggleListeningMode}
-              size="sm"
-            />
-            <ClientOnly>
-              {player.nowPlaying && (
-                <Tooltip label={isMinimalPlayer ? "Expand player" : "Minimize player"} position="bottom" withArrow>
-                  <ActionIcon
-                    size="sm"
-                    variant="subtle"
-                    onClick={() => setIsMinimalPlayer(!isMinimalPlayer)}
-                    style={{ color: "#94a3b8" }}
-                    aria-label={isMinimalPlayer ? "Expand player" : "Minimize player"}
-                  >
-                    <IconMinimize size={16} />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-            </ClientOnly>
-          </nav>
-          
-          <Badge radius="xl" size="md" className="hidden md:block" style={{
-            background: "rgba(209, 73, 91, 0.18)", color: BRAND.beige, border: "1px solid rgba(209, 73, 91, 0.4)",
-            fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase"
-          }}>Live beta</Badge>
-        </div>
-      </header>
+      <main
+        className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pt-4 md:px-6"
+        style={{ paddingBottom: "calc(8rem + env(safe-area-inset-bottom, 0px))" }}
+        {...swipeHandlers}
+        {...ariaHidden}
+      >  {isCountryViewPending ? <LoadingView /> : !selectedCountry ? (
+        <>
+          <HeroSection topCountries={topCountries} totalStations={derived.totalStations} continents={derived.continents.length}
+            nowPlaying={player.nowPlaying} searchQueryRaw={searchQueryRaw} onStartListening={handlers.handleStartListening}
+            onQuickRetune={handlers.handleQuickRetune} onMissionExploreWorld={handlers.handleMissionExploreWorld}
+            onMissionStayLocal={handlers.handleMissionStayLocal} onHoverSound={triggerHoverStatic}
+          />
 
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-64 pt-24 md:px-8" {...swipeHandlers} {...ariaHidden}>
-        {isCountryViewPending ? <LoadingView /> : !selectedCountry ? (
-          <>
-            <HeroSection topCountries={topCountries} totalStations={derived.totalStations} continents={derived.continents.length}
-              nowPlaying={player.nowPlaying} searchQueryRaw={searchQueryRaw} onStartListening={handlers.handleStartListening}
-              onQuickRetune={handlers.handleQuickRetune} onMissionExploreWorld={handlers.handleMissionExploreWorld}
-              onMissionStayLocal={handlers.handleMissionStayLocal} onHoverSound={triggerHoverStatic}
-            />
+          <section className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <JourneyComposer onSubmit={() => handlers.handleQuickRetune()} />
+            <div className="rounded-3xl border border-slate-200 bg-slate-100/50 p-4 shadow-sm flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">Mission Log</p>
+                  <p className="text-xs text-slate-500">
+                    Track upcoming AI journeys and revisit past prompts once the service hooks in.
+                  </p>
+                </div>
+                <div className="rounded-full border border-slate-300 px-3 py-1 text-[11px] uppercase tracking-[0.35em] text-slate-500 font-bold">
+                  TODO
+                </div>
+              </div>
+              <MissionLogDrawer />
+            </div>
+          </section>
 
-            <section id="atlas" className="mt-6">
-              <div className="sticky top-[73px] z-40 pb-3 pt-3">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <Title order={2} style={{ fontSize: "1.35rem", fontWeight: 600, color: BRAND.beige, marginBottom: "0.15rem" }}>
-                      Chart your path by continent
-                    </Title>
-                    <Text size="xs" c="rgba(244,237,224,0.6)">
-                      Filter the atlas to the regions that match your listening mood.
-                    </Text>
-                  </div>
-                  <Text size="xs" c="rgba(244,237,224,0.45)" className="whitespace-nowrap">
-                    Showing {derived.filteredCountries.length.toLocaleString()} of {topCountries.length.toLocaleString()} spotlight countries
+          <section id="atlas" className="mt-6">
+            <div className="sticky top-[73px] z-40 pb-3 pt-3">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <Title order={2} style={{ fontSize: "1.35rem", fontWeight: 700, color: "#1e293b", marginBottom: "0.15rem" }}>
+                    Chart your path by continent
+                  </Title>
+                  <Text size="xs" c="dimmed">
+                    Filter the atlas to the regions that match your listening mood.
                   </Text>
                 </div>
-
-                <div className="mt-3">
-                  <AtlasFilters continents={derived.continents} activeContinent={atlas.activeContinent} onContinentSelect={atlas.setActiveContinent} />
-                </div>
+                <Text size="xs" c="dimmed" className="whitespace-nowrap font-mono">
+                  Showing {derived.filteredCountries.length.toLocaleString()} of {topCountries.length.toLocaleString()} spotlight countries
+                </Text>
               </div>
 
-              <div className="mt-4">
-                <AtlasGrid displaySections={derived.displaySections} onPreviewCountry={handlers.handlePreviewCountryPlay} />
+              <div className="mt-3">
+                <AtlasFilters continents={derived.continents} activeContinent={atlas.activeContinent} onContinentSelect={atlas.setActiveContinent} />
               </div>
+            </div>
+
+            <div className="mt-4">
+              <AtlasGrid displaySections={derived.displaySections} onPreviewCountry={handlers.handlePreviewCountryPlay} />
+            </div>
+          </section>
+        </>
+      ) : (
+        <>
+          <CountryOverview
+            selectedCountry={selectedCountry}
+            selectedCountryMeta={selectedCountryMeta}
+            stationCount={stations.length}
+            onBack={handlers.handleBackToWorldView}
+            nowPlaying={player.nowPlaying}
+            isPlaying={player.isPlaying}
+            onPlayPause={player.playPause}
+            onNext={playNext}
+            onPrev={playPrevious}
+          />
+
+          <CollapsibleSection title={`Stations in ${selectedCountry}`} defaultOpen id="stations">
+            <section className="mt-4">
+              <StationGrid stations={stations} nowPlaying={player.nowPlaying} stationRefs={stationRefs}
+                onPlayStation={handleStartStation} isFetchingExplore={mode.isFetchingExplore}
+                favoriteStationIds={favoriteStationIds} onToggleFavorite={handleToggleFavorite}
+              />
             </section>
-          </>
-        ) : (
-          <>
-            <CountryOverview selectedCountry={selectedCountry} selectedCountryMeta={selectedCountryMeta}
-              stationCount={stations.length} onBack={handlers.handleBackToWorldView}
-            />
-
-            <PlayerCardStack
-              playerCards={cards.playerCards}
-              activeCardIndex={activeCardIndex}
-              cardDirection={cardDirection}
-              nowPlaying={player.nowPlaying}
-              isPlaying={player.isPlaying}
-              listeningMode={mode.listeningMode}
-              stackStations={cards.deckStations}
-              recentStations={recentStations}
-              favoriteStationIds={favoriteStationIds}
-              countryMap={atlas.countryMap}
-              hasStationsToCycle={cards.hasStationsToCycle}
-              isFetchingExplore={mode.isFetchingExplore}
-              localStationCount={stations.length}
-              globalStationCount={mode.exploreStations.length || cards.deckStations.length}
-              selectedCountry={selectedCountry}
-              worldDescriptor={descriptorState}
-              onCardChange={handleCardChange}
-              onCardJump={handleCardJump}
-              onToggleFavorite={handleToggleFavorite}
-              onStartStation={handleStartStation}
-              onPlayPause={player.playPause}
-              onPlayNext={playNext}
-              onSetListeningMode={mode.setListeningMode}
-              onMissionExploreWorld={handlers.handleMissionExploreWorld}
-              onMissionStayLocal={handlers.handleMissionStayLocal}
-            />
-
-            <CollapsibleSection title={`Stations in ${selectedCountry}`} defaultOpen id="stations">
-              <section className="mt-4">
-                <StationGrid stations={stations} nowPlaying={player.nowPlaying} stationRefs={stationRefs}
-                  onPlayStation={handleStartStation} isFetchingExplore={mode.isFetchingExplore}
-                  favoriteStationIds={favoriteStationIds} onToggleFavorite={handleToggleFavorite}
-                />
-              </section>
-            </CollapsibleSection>
-          </>
-        )}
+          </CollapsibleSection>
+        </>
+      )}
       </main>
 
-      <QuickRetuneWidget isOpen={isQuickRetuneOpen} onOpenChange={setIsQuickRetuneOpen} continents={derived.continents}
+      <QuickRetuneWidget isOpen={isQuickRetuneOpen} onOpenChange={setQuickRetuneOpen} continents={derived.continents}
         activeContinent={atlas.activeContinent} onContinentSelect={handlers.handleContinentSelect}
         countriesByContinent={derived.continentData} topCountries={topCountries}
         onCountrySelect={handlers.handleQuickRetuneCountrySelect} onSurprise={handlers.handleSurpriseRetune}
@@ -549,49 +365,6 @@ export default function Index() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div {...ariaHidden}>
-        {isMinimalPlayer ? (
-          <MinimalPlayer
-            nowPlaying={player.nowPlaying}
-            isPlaying={player.isPlaying}
-            canSeekStations={cards.canSeekStations}
-            countryMap={atlas.countryMap}
-            onPlayPause={player.playPause}
-            onPlayNext={playNext}
-            onPlayPrevious={playPrevious}
-            onMaximize={() => setIsMinimalPlayer(false)}
-            onDismiss={() => {
-              player.stop();
-              setHasDismissedPlayer(true);
-            }}
-          />
-        ) : (
-          <PassportPlayerFooter
-            nowPlaying={player.nowPlaying}
-            isPlaying={player.isPlaying}
-            audioLevel={player.audioLevel}
-            shuffleMode={player.shuffleMode}
-            listeningMode={mode.listeningMode}
-            canSeekStations={cards.canSeekStations}
-            hasStationsToCycle={cards.hasStationsToCycle}
-            countryMap={atlas.countryMap}
-            onPlayPause={player.playPause}
-            onPlayNext={playNext}
-            onPlayPrevious={playPrevious}
-            onShuffleToggle={() => player.setShuffleMode((prev: boolean) => !prev)}
-            onQuickRetune={() => setIsQuickRetuneOpen(true)}
-            onBackToWorld={handlers.handleBackToWorldView}
-            onMinimize={() => setIsMinimalPlayer(true)}
-            onDismiss={() => {
-              player.stop();
-              setHasDismissedPlayer(true);
-            }}
-            descriptorState={descriptorState}
-            onVoiceDescriptor={handleVoiceDescriptorRequest}
-          />
-        )}
-      </div>
 
     </div>
   );

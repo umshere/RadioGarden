@@ -16,13 +16,9 @@ export function CollapsibleSection({ title, defaultOpen = true, children, id }: 
   return (
     <section id={id} className="mt-4">
       <div
-        className="flex items-center justify-between rounded-xl border px-3 py-2"
-        style={{
-          borderColor: "rgba(244,237,224,0.12)",
-          background: "rgba(4,22,39,0.6)",
-        }}
+        className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm"
       >
-        <Text fw={600} size="sm" c="#f8fafc">
+        <Text fw={700} size="sm" c="slate.9">
           {title}
         </Text>
         <ActionIcon
@@ -31,7 +27,7 @@ export function CollapsibleSection({ title, defaultOpen = true, children, id }: 
           onClick={() => setOpen((s) => !s)}
           aria-expanded={open}
           aria-controls={`${id ?? title}-content`}
-          style={{ color: "rgba(248,250,252,0.8)", border: "1px solid rgba(148,163,184,0.28)", background: "rgba(12,30,52,0.68)" }}
+          className="text-slate-600 border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:text-slate-900"
         >
           <motion.span
             animate={{ rotate: open ? 0 : -90 }}
