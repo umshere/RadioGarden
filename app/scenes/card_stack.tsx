@@ -27,31 +27,31 @@ const TAG_LIMIT = 2;
 const CARD_STACK_LIMIT = 8;
 const CARD_BASE_WIDTH = 440;
 const CARD_BASE_HEIGHT = 320;
-const CARD_STAGE_HEIGHT = CARD_BASE_HEIGHT + 220;
-const CARD_WIDTH_STYLE = `min(${CARD_BASE_WIDTH}px, 82vw)`;
-const CARD_HEIGHT_STYLE = `clamp(260px, 48vh, ${CARD_BASE_HEIGHT}px)`;
-const SCENE_MIN_HEIGHT = "min(48rem, 88vh)";
+const CARD_STAGE_HEIGHT = CARD_BASE_HEIGHT + 160;
+const CARD_WIDTH_STYLE = `min(${CARD_BASE_WIDTH}px, 90vw)`;
+const CARD_HEIGHT_STYLE = `clamp(240px, 42vh, ${CARD_BASE_HEIGHT}px)`;
+const SCENE_MIN_HEIGHT = "auto";
 const DEFAULT_REASON = "The Passport sequenced stations that best fit this mood.";
 const BASE_BACKGROUND = "transparent";
 const FREQUENCY_BASE = 87.5;
 const FREQUENCY_RANGE = 18.5;
 
 const FAN_CONFIG = {
-  spread: 40, // Tighter spread for desktop stack
+  spread: 28, // Tighter spread for better containment
   verticalLift: 0,
   rotation: 0,
-  depthScale: 0.05,
-  depthFade: 0.15,
-  maxVisibleOffset: 4,
+  depthScale: 0.04,
+  depthFade: 0.12,
+  maxVisibleOffset: 3,
 };
 
 const MOBILE_FAN_CONFIG = {
-  spread: 100, // Percentage based spread for mobile slider
+  spread: 100, // Full width for mobile slider
   verticalLift: 0,
   rotation: 0,
   depthScale: 0,
   depthFade: 0,
-  maxVisibleOffset: 1,
+  maxVisibleOffset: 0, // Show only active card on mobile
 };
 
 const CARD_CENTER_LEFT = 47;
@@ -64,178 +64,245 @@ const CARD_ACCENTS = [
   "linear-gradient(135deg, #134e5e, #71b280)",
 ];
 
-interface CompactNowPlayingProps {
+interface RetroTunerDisplayProps {
   station: Station | null;
-  onNext?: () => void;
-  onPrevious?: () => void;
+  activeIndex: number;
+  totalStations: number;
 }
 
-const CompactNowPlayingHeader = ({ station, onNext, onPrevious }: CompactNowPlayingProps) => {
-  const { isPlaying, togglePlay } = usePlayerStore();
-
+const RetroTunerDisplay = ({ station, activeIndex, totalStations }: RetroTunerDisplayProps) => {
   if (!station) return null;
 
-  const fallbackInitials = getFallbackInitials(station.name);
-  const languageLabel = getDisplayLanguage(station);
-  const secondaryLine = [station.country, languageLabel].filter(Boolean).join(" • ");
+  const frequency = useMemo(() => {
+    // Generate frequency based on station index
+    const range = 20.0; // 88-108 FM range
+    const normalized = activeIndex / Math.max(totalStations - 1, 1);
+    return (88.0 + normalized * range).toFixed(1);
+  }, [activeIndex, totalStations]);
 
-  const controlButtonStyle: CSSProperties = {
-    width: "46px",
-    height: "46px",
-    borderRadius: "999px",
-    border: "1px solid rgba(15,23,42,0.08)",
-    background: "rgba(255,255,255,0.6)",
-    color: "#334155",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "all 0.2s ease",
-    backdropFilter: "blur(12px)",
-  };
+  const freqNum = parseFloat(frequency);
+  const freqPercent = ((freqNum - 88.0) / 20.0) * 100;
+
+  // Generate tick marks for the tuner (88-108 MHz)
+  const tickStart = 88;
+  const tickEnd = 108;
+  const tickCount = 21; // One tick every MHz
+  const ticks = Array.from({ length: tickCount }, (_, i) => tickStart + i);
 
   return (
     <div
-      className="compact-now-playing"
+      className="retro-tuner-display"
       style={{
         width: "100%",
         display: "flex",
-        flexWrap: "wrap",
+        flexDirection: "row",
         alignItems: "center",
-        justifyContent: "space-between",
-        gap: "1.1rem",
-        padding: "1rem 1.4rem",
-        borderRadius: "1.25rem",
-        background: "rgba(255,255,255,0.75)",
-        border: "1px solid rgba(255,255,255,0.6)",
-        boxShadow: "0 25px 40px rgba(148,163,184,0.15)",
+        gap: "1.5rem",
+        padding: "1.5rem 2rem",
+        borderRadius: "1.5rem",
+        background: "#e0e5ec",
+        border: "none",
+        boxShadow: "inset 8px 8px 16px #b8b9be, inset -8px -8px 16px #ffffff",
         position: "relative",
         overflow: "hidden",
       }}
     >
+      {/* Left Side: Station Info */}
       <div
-        aria-hidden
         style={{
-          position: "absolute",
-          inset: 0,
-          background: "radial-gradient(circle at 15% 30%, rgba(56,189,248,0.08), transparent 45%)",
-          mixBlendMode: "normal",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.5rem",
+          minWidth: 0,
+          flex: 1,
         }}
-      />
-      <div style={{ display: "flex", alignItems: "center", gap: "1.2rem", minWidth: 0 }}>
+      >
         <div
           style={{
-            width: "64px",
-            height: "64px",
-            borderRadius: "0.75rem",
-            overflow: "hidden",
-            border: "1px solid rgba(226,232,240,0.8)",
-            background: station.favicon ? "rgba(255,255,255,0.9)" : "rgba(241,245,249,0.9)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#334155",
-            fontSize: "1.65rem",
+            fontSize: "0.6rem",
+            letterSpacing: "0.3em",
+            textTransform: "uppercase",
+            color: "rgba(100,116,139,0.6)",
             fontWeight: 600,
-            letterSpacing: "0.08em",
-            boxShadow: "0 12px 32px rgba(148,163,184,0.2)",
           }}
         >
-          {station.favicon ? (
-            <img
-              src={station.favicon}
-              alt="Station artwork"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            fallbackInitials
-          )}
+          Now Playing
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "1.25rem",
+            fontWeight: 700,
+            color: "#0f172a",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {station.name}
+        </p>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "0.85rem",
+            color: "rgba(71,85,105,0.8)",
+          }}
+        >
+          {[station.country, station.state].filter(Boolean).join(" • ") || "Global"}
+        </p>
+      </div>
+
+      {/* Center: Horizontal Tuner Slider */}
+      <div
+        style={{
+          flex: 2,
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.75rem",
+          alignItems: "center",
+          minWidth: "200px",
+        }}
+      >
+        {/* Tuner Scale */}
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            height: "60px",
+            background: "rgba(203,213,225,0.3)",
+            borderRadius: "12px",
+            padding: "0 1rem",
+            display: "flex",
+            alignItems: "center",
+            boxShadow: "inset 4px 4px 8px rgba(184,185,190,0.4), inset -4px -4px 8px rgba(255,255,255,0.5)",
+          }}
+        >
+          {/* Tick marks */}
+          <div
+            style={{
+              position: "absolute",
+              inset: "0 1rem",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            {ticks.map((tick, i) => {
+              const isMajor = tick % 5 === 0;
+              const isNearCurrent = Math.abs(tick - freqNum) < 2;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "4px",
+                    opacity: isNearCurrent ? 1 : 0.3,
+                    transition: "opacity 0.3s ease",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "2px",
+                      height: isMajor ? "20px" : "12px",
+                      background: "#64748b",
+                      borderRadius: "999px",
+                    }}
+                  />
+                  {isMajor && (
+                    <span
+                      style={{
+                        fontSize: "0.65rem",
+                        fontWeight: 600,
+                        color: "#64748b",
+                      }}
+                    >
+                      {tick}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Red needle indicator */}
+          <div
+            style={{
+              position: "absolute",
+              left: `calc(${freqPercent}% + 1rem - 2px)`,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "4px",
+              height: "40px",
+              background: "#ef4444",
+              borderRadius: "999px",
+              boxShadow: "0 0 12px rgba(239,68,68,0.6), 0 0 24px rgba(239,68,68,0.3)",
+              zIndex: 10,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: `calc(${freqPercent}% + 1rem - 8px)`,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "16px",
+              height: "16px",
+              background: "#ef4444",
+              borderRadius: "50%",
+              boxShadow: "0 0 8px rgba(239,68,68,0.5)",
+              zIndex: 11,
+            }}
+          />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", minWidth: 0 }}>
-          <span
-            style={{
-              fontSize: "0.55rem",
-              letterSpacing: "0.65em",
-              textTransform: "uppercase",
-              color: "rgba(100,116,139,0.8)",
-            }}
-          >
-            Now Playing
-          </span>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "1.2rem",
-              fontWeight: 700,
-              color: "#0f172a",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {station.name}
-          </p>
-          <span
-            style={{
-              fontSize: "0.8rem",
-              color: "rgba(71,85,105,0.75)",
-            }}
-          >
-            {secondaryLine || "Around the world"}
-          </span>
+        {/* Station Counter */}
+        <div
+          style={{
+            fontSize: "0.6rem",
+            letterSpacing: "0.25em",
+            textTransform: "uppercase",
+            color: "rgba(100,116,139,0.6)",
+            fontWeight: 600,
+          }}
+        >
+          Station {activeIndex + 1} of {totalStations}
         </div>
       </div>
 
+      {/* Right Side: Large Frequency Display */}
       <div
-        className="compact-player-controls"
-        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: "0.25rem",
+        }}
       >
-        <button
-          type="button"
-          aria-label="Previous station"
-          onClick={onPrevious}
-          disabled={!onPrevious}
+        <div
           style={{
-            ...controlButtonStyle,
-            opacity: onPrevious ? 1 : 0.4,
-            cursor: onPrevious ? "pointer" : "not-allowed",
-            boxShadow: onPrevious ? "0 8px 20px rgba(148,163,184,0.2)" : "none",
+            fontFamily: "monospace",
+            fontSize: "4rem",
+            fontWeight: 700,
+            letterSpacing: "-0.04em",
+            color: "#0f172a",
+            lineHeight: 0.9,
           }}
         >
-          <IconPlayerTrackPrev size={20} />
-        </button>
-        <button
-          type="button"
-          aria-label={isPlaying ? "Pause" : "Play"}
-          onClick={togglePlay}
+          {frequency}
+        </div>
+        <div
           style={{
-            ...controlButtonStyle,
-            width: "56px",
-            height: "56px",
-            border: "1px solid rgba(14,165,233,0.2)",
-            background: isPlaying
-              ? "linear-gradient(135deg, rgba(14,165,233,0.1), rgba(56,189,248,0.2))"
-              : "linear-gradient(135deg, rgba(255,255,255,0.8), rgba(241,245,249,0.8))",
-            color: isPlaying ? "#0284c7" : "#0f172a",
-            boxShadow: "0 15px 30px rgba(148,163,184,0.25)",
+            fontSize: "0.75rem",
+            letterSpacing: "0.3em",
+            textTransform: "uppercase",
+            color: "rgba(100,116,139,0.7)",
+            fontWeight: 600,
           }}
         >
-          {isPlaying ? <IconPlayerPauseFilled size={26} /> : <IconPlayerPlayFilled size={26} />}
-        </button>
-        <button
-          type="button"
-          aria-label="Next station"
-          onClick={onNext}
-          disabled={!onNext}
-          style={{
-            ...controlButtonStyle,
-            opacity: onNext ? 1 : 0.4,
-            cursor: onNext ? "pointer" : "not-allowed",
-            boxShadow: onNext ? "0 8px 20px rgba(148,163,184,0.2)" : "none",
-          }}
-        >
-          <IconPlayerTrackNext size={20} />
-        </button>
+          MHz
+        </div>
       </div>
     </div>
   );
@@ -294,9 +361,7 @@ function getDecorativeFrequency(index: number): { label: string; percent: number
   const clamped = Math.max(FREQUENCY_BASE, Math.min(FREQUENCY_BASE + FREQUENCY_RANGE, rawValue));
   const percent = ((clamped - FREQUENCY_BASE) / FREQUENCY_RANGE) * 100;
   return { label: `${clamped.toFixed(1)} FM`, percent };
-}
-
-interface StationCardFanItemProps {
+} interface StationCardFanItemProps {
   station: Station;
   index: number;
   activeIndex: number;
@@ -308,6 +373,8 @@ interface StationCardFanItemProps {
   moodLabel: string;
   onHover: (id: string | null) => void;
   onClick: (station: Station) => void;
+  onSwipeLeft?: () => void;
+  onSwipeRight?: () => void;
   fanConfig: typeof FAN_CONFIG;
 }
 
@@ -324,6 +391,8 @@ const StationCardFanItem = memo(
     moodLabel,
     onHover,
     onClick,
+    onSwipeLeft,
+    onSwipeRight,
     fanConfig,
   }: StationCardFanItemProps) => {
     const isActive = station.uuid === (activeStationId ?? localActiveId);
@@ -333,6 +402,23 @@ const StationCardFanItem = memo(
     const depth = Math.abs(clampedOffset);
     const isMobile = fanConfig === MOBILE_FAN_CONFIG;
 
+    // Swipe handlers for individual cards (mobile only)
+    const cardSwipeHandlers = useSwipeable({
+      onSwipedLeft: () => {
+        if (isMobile && isActive && onSwipeLeft) {
+          onSwipeLeft();
+        }
+      },
+      onSwipedRight: () => {
+        if (isMobile && isActive && onSwipeRight) {
+          onSwipeRight();
+        }
+      },
+      preventScrollOnSwipe: true,
+      trackTouch: true,
+      delta: 50, // Minimum swipe distance
+    });
+
     // Desktop Stack Logic
     let translateX: number | string = clampedOffset * fanConfig.spread;
     let translateY = depth * fanConfig.verticalLift;
@@ -341,19 +427,22 @@ const StationCardFanItem = memo(
     let scale = isActive ? 1 : Math.max(0.84, baseScale);
     let depthOpacity = isActive ? 1 : 1 - Math.min(fanConfig.depthFade * depth, 0.45);
     let zIndex = isActive ? 120 : 90 - depth * 10;
+    let cardPadding = "1.8rem";
+    let cardGap = "1.25rem";
+    let artworkSize = "110px";
 
     // Mobile Slider Logic
     if (isMobile) {
-      // On mobile, we want a flat slider. 
-      // Active card is centered. 
-      // Previous card is off-screen left.
-      // Next card is off-screen right.
-      translateX = `${offset * 100}%`; // Use percentage for mobile
+      // On mobile, simplified single-card view
+      translateX = `${offset * 100}%`;
       translateY = 0;
       rotate = 0;
       scale = 1;
-      depthOpacity = 1;
-      zIndex = isActive ? 10 : 1;
+      depthOpacity = offset === 0 ? 1 : 0;
+      zIndex = offset === 0 ? 10 : 1;
+      cardPadding = "1.2rem";
+      cardGap = "1rem";
+      artworkSize = "85px";
     }
 
     const accent = getCardAccent(index);
@@ -425,15 +514,16 @@ const StationCardFanItem = memo(
           left: isMobile ? "0" : `${CARD_CENTER_LEFT}%`,
           transform: isMobile ? "translateY(-50%)" : "translate(-50%, -50%)",
           width: isMobile ? "100%" : CARD_WIDTH_STYLE,
-          height: isMobile ? "100%" : CARD_HEIGHT_STYLE,
-          borderRadius: "1.6rem",
+          height: isMobile ? "auto" : CARD_HEIGHT_STYLE,
+          minHeight: isMobile ? "280px" : undefined,
+          borderRadius: isMobile ? "1.25rem" : "1.6rem",
           border: `1px solid ${borderColor}`,
           background: cardBackground,
           boxShadow: glowShadow,
-          flexDirection: "row",
+          flexDirection: isMobile ? "column" : "row",
           alignItems: "stretch",
-          padding: "1.8rem",
-          gap: "1.25rem",
+          padding: cardPadding,
+          gap: cardGap,
           cursor: "pointer",
           overflow: "hidden",
           zIndex: isActive ? 110 : zIndex,
@@ -443,6 +533,7 @@ const StationCardFanItem = memo(
           backdropFilter: "blur(18px)",
           color: "#334155",
         }}
+        {...(isMobile && isActive ? cardSwipeHandlers : {})}
         onMouseEnter={() => onHover(station.uuid)}
         onMouseLeave={() => onHover(null)}
         onFocus={() => onHover(station.uuid)}
@@ -502,9 +593,9 @@ const StationCardFanItem = memo(
           >
             <div
               style={{
-                width: "110px",
-                minWidth: "110px",
-                height: "110px",
+                width: artworkSize,
+                minWidth: artworkSize,
+                height: artworkSize,
                 borderRadius: "1.25rem",
                 overflow: "hidden",
                 border: `1px solid ${artBorderColor}`,
@@ -514,6 +605,7 @@ const StationCardFanItem = memo(
                 justifyContent: "center",
                 boxShadow: "0 15px 45px rgba(148,163,184,0.25)",
                 flexShrink: 0,
+                margin: isMobile ? "0 auto" : 0,
               }}
             >
               {station.favicon ? (
@@ -714,15 +806,18 @@ const StationCardFanItem = memo(
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "0.4rem",
-                padding: "0.45rem 1.2rem",
-                borderRadius: "999px",
-                border: "1px solid rgba(226,232,240,0.8)",
-                background: isActive ? "rgba(241,245,249,0.8)" : "rgba(241,245,249,0.5)",
-                color: "#0f172a",
+                padding: "0.5rem 1.3rem",
+                borderRadius: "12px",
+                border: "none",
+                background: isActive ? "#1e293b" : "#e0e5ec",
+                color: isActive ? "#ffffff" : "#0f172a",
                 textTransform: "uppercase",
                 fontSize: "0.7rem",
                 letterSpacing: "0.25em",
-                boxShadow: isActive ? "0 8px 20px rgba(148,163,184,0.2)" : "0 4px 10px rgba(148,163,184,0.1)",
+                boxShadow: isActive
+                  ? "6px 6px 12px #0a0e14, -6px -6px 12px #323f56"
+                  : "6px 6px 12px #b8b9be, -6px -6px 12px #ffffff",
+                fontWeight: 600,
               }}
             >
               <IconPlayerPlayFilled size={14} />
@@ -786,6 +881,66 @@ const StationCardFanItem = memo(
             </span>
           </div>
         </div>
+
+        {/* Swipe indicators for mobile */}
+        {isMobile && isActive && (
+          <>
+            <div
+              style={{
+                position: "absolute",
+                left: "0.5rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                background: "rgba(148,163,184,0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
+                opacity: 0.6,
+              }}
+            >
+              <span
+                style={{
+                  width: "0",
+                  height: "0",
+                  borderTop: "6px solid transparent",
+                  borderBottom: "6px solid transparent",
+                  borderRight: "8px solid rgba(100,116,139,0.7)",
+                }}
+              />
+            </div>
+            <div
+              style={{
+                position: "absolute",
+                right: "0.5rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                background: "rgba(148,163,184,0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
+                opacity: 0.6,
+              }}
+            >
+              <span
+                style={{
+                  width: "0",
+                  height: "0",
+                  borderTop: "6px solid transparent",
+                  borderBottom: "6px solid transparent",
+                  borderLeft: "8px solid rgba(100,116,139,0.7)",
+                }}
+              />
+            </div>
+          </>
+        )}
       </motion.button>
     );
   }
@@ -1079,14 +1234,14 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
         width: "100%",
         minHeight: SCENE_MIN_HEIGHT,
         background: BASE_BACKGROUND,
-        padding: "0.75rem 1.5rem 1.8rem",
+        padding: "0.5rem 0.75rem 1rem",
         borderRadius: "1.5rem",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "flex-start",
-        gap: "0.65rem",
+        gap: "0.5rem",
         boxShadow: "0 30px 80px rgba(148,163,184,0.25)",
       }}
     >
@@ -1116,19 +1271,19 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
           style={{
-            fontSize: "0.62rem",
+            fontSize: "0.6rem",
             letterSpacing: "0.22em",
             textTransform: "uppercase",
             color: "rgba(100,116,139,0.55)",
             display: "inline-flex",
             alignItems: "center",
             gap: "0.6rem",
-            padding: "0.15rem 0",
+            padding: "0.25rem 0",
           }}
         >
-          <span style={{ width: "28px", height: "1px", background: "rgba(148,163,184,0.25)" }} />
-          Arrow Keys · Click to Play · Home/End jump
-          <span style={{ width: "28px", height: "1px", background: "rgba(148,163,184,0.25)" }} />
+          <span style={{ width: "20px", height: "1px", background: "rgba(148,163,184,0.25)" }} />
+          Arrow Keys · Click · Swipe
+          <span style={{ width: "20px", height: "1px", background: "rgba(148,163,184,0.25)" }} />
         </motion.div>
 
         <motion.section
@@ -1142,18 +1297,18 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
             position: "relative",
             width: "100%",
             background: "rgba(255,255,255,0.6)",
-            borderRadius: "1.6rem",
+            borderRadius: "1.4rem",
             border: "1.5px solid rgba(226,232,240,0.8)",
             boxShadow: "0 45px 120px rgba(148,163,184,0.25)",
             overflow: "visible",
-            padding: "1.25rem 1.4rem 1.6rem",
+            padding: "0.75rem 1rem 1rem",
             minHeight: "0",
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-start",
             touchAction: "pan-y",
             overscrollBehaviorY: "contain",
-            gap: "0.35rem",
+            gap: "0.5rem",
           }}
         >
           <div
@@ -1177,10 +1332,10 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
                 zIndex: 5,
               }}
             >
-              <CompactNowPlayingHeader
+              <RetroTunerDisplay
                 station={activeStation}
-                onNext={() => stepActiveStation(1, { autoplay: true })}
-                onPrevious={() => stepActiveStation(-1, { autoplay: true })}
+                activeIndex={activeIndex}
+                totalStations={totalStations}
               />
             </motion.div>
           )}
@@ -1194,7 +1349,7 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
               width: "100%",
               maxWidth: "min(980px, 92vw)",
               margin: "0 auto 0.1rem",
-              minHeight: isMobile ? "320px" : `${CARD_STAGE_HEIGHT}px`,
+              minHeight: isMobile ? "340px" : `${CARD_STAGE_HEIGHT}px`,
             }}
           >
             {visibleStations.map((station, index) => (
@@ -1211,6 +1366,8 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
                 moodLabel={moodLabel}
                 onHover={setHoveredId}
                 onClick={(candidate) => setActiveStation(candidate, { autoplay: true })}
+                onSwipeLeft={() => stepActiveStation(1)}
+                onSwipeRight={() => stepActiveStation(-1)}
                 fanConfig={fanConfig}
               />
             ))}
@@ -1258,28 +1415,34 @@ const CardStackScene: SceneComponent = ({ descriptor, onStationSelect, activeSta
               border-color: rgba(248,250,252,0.4);
             }
 
-            @media (max-width: 1024px) {
-              .compact-now-playing {
-                gap: 0.75rem;
-                padding: 0.75rem 1rem;
-              }
-              .compact-player-controls {
-                width: auto;
-                gap: 0.5rem;
-              }
-              .compact-player-controls button {
-                width: 40px !important;
-                height: 40px !important;
-                min-width: 0;
-              }
-            }
-
             @media (max-width: 768px) {
               .station-list-card {
-                /* Keep row layout on mobile to prevent vertical overflow */
-                flex-direction: row;
-                align-items: stretch;
+                flex-direction: column;
+                align-items: center;
                 left: 0 !important;
+                transform: translateY(-50%) !important;
+                padding: 1.2rem !important;
+                gap: 1rem !important;
+                touch-action: pan-y;
+                user-select: none;
+                -webkit-user-select: none;
+                -webkit-touch-callout: none;
+              }
+              .station-list-card:active {
+                cursor: grabbing;
+              }
+              .retro-tuner-display {
+                flex-direction: column !important;
+                gap: 1rem !important;
+                padding: 1.25rem 1.5rem !important;
+                align-items: center !important;
+              }
+              .retro-tuner-display > div:first-child {
+                text-align: center;
+                width: 100%;
+              }
+              .retro-tuner-display > div:last-child {
+                align-items: center !important;
               }
             }
 
