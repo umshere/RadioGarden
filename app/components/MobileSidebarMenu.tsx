@@ -35,10 +35,10 @@ export default function MobileSidebarMenu() {
 
     return (
         <>
-            {/* Hamburger Menu Button - Top Left */}
+            {/* Hamburger Menu Button - Top Right */}
             <button
                 onClick={() => setIsOpen(true)}
-                className="lg:hidden fixed top-4 left-4 z-50 flex h-11 w-11 items-center justify-center rounded-xl bg-[#e0e5ec] text-slate-700 shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff] transition-all"
+                className="lg:hidden fixed top-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-xl bg-[#e0e5ec] text-slate-700 shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff] transition-all"
                 aria-label="Open menu"
             >
                 <IconMenu2 size={22} stroke={2.5} />

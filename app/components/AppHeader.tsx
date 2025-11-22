@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, NavLink, useLocation } from "@remix-run/react";
 import { ActionIcon, Badge } from "@mantine/core";
-import { IconBell, IconSettings, IconSearch, IconMenu2, IconX } from "@tabler/icons-react";
+import { IconBell, IconSettings, IconSearch } from "@tabler/icons-react";
 import { usePlayerStore } from "~/state/playerStore";
 
 const NAV_LINKS = [
@@ -15,7 +15,6 @@ export default function AppHeader() {
   const nowPlaying = usePlayerStore((state) => state.nowPlaying);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const audioLevel = usePlayerStore((state) => state.audioLevel);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const tickerText = nowPlaying
     ? `Now ${isPlaying ? "playing" : "queued"} • ${nowPlaying.name} — ${nowPlaying.country || nowPlaying.language || "Unknown"
@@ -26,10 +25,6 @@ export default function AppHeader() {
     if (to === "/") return location.pathname === "/";
     return location.pathname === to || location.pathname.startsWith(`${to}/`);
   };
-
-  useEffect(() => {
-    setMobileNavOpen(false);
-  }, [location.pathname]);
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-[#e0e5ec]/80 border-b border-slate-200/50">
@@ -65,15 +60,6 @@ export default function AppHeader() {
         <Badge variant="dot" color="red" radius="xl" className="font-mono">LIVE</Badge>
 
         <div className="flex items-center gap-1 md:gap-3 flex-shrink-0">
-          <ActionIcon
-            variant="transparent"
-            color="dark"
-            aria-label="Toggle navigation"
-            className="md:hidden"
-            onClick={() => setMobileNavOpen((prev) => !prev)}
-          >
-            {mobileNavOpen ? <IconX size={20} /> : <IconMenu2 size={20} />}
-          </ActionIcon>
           <div className="hidden items-center gap-1 md:flex">
             <ActionIcon variant="transparent" color="dark" aria-label="Search">
               <IconSearch size={20} />
@@ -113,42 +99,6 @@ export default function AppHeader() {
           <span className="truncate">{tickerText}</span>
         </div>
       </div>
-
-      {mobileNavOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-[#e0e5ec]/95 px-4 py-4 absolute top-16 left-0 right-0 shadow-xl backdrop-blur-xl h-screen">
-          <nav className="flex flex-col gap-2">
-            {NAV_LINKS.map(({ to, label }) => {
-              const active = isActive(to);
-              return (
-                <NavLink
-                  key={to}
-                  to={to}
-                  prefetch="intent"
-                  aria-current={active ? "page" : undefined}
-                  className={`rounded-xl px-4 py-3 text-base font-bold transition-all ${active
-                    ? "bg-white shadow-sm text-slate-900"
-                    : "text-slate-500 hover:bg-white/50 hover:text-slate-800"
-                    }`}
-                  onClick={() => setMobileNavOpen(false)}
-                >
-                  {label}
-                </NavLink>
-              );
-            })}
-          </nav>
-          <div className="mt-6 flex items-center justify-around border-t border-slate-200 pt-6">
-            <ActionIcon variant="transparent" color="dark" size="lg" aria-label="Search">
-              <IconSearch size={24} />
-            </ActionIcon>
-            <ActionIcon variant="transparent" color="dark" size="lg" aria-label="Notifications">
-              <IconBell size={24} />
-            </ActionIcon>
-            <ActionIcon variant="transparent" color="dark" size="lg" aria-label="Settings">
-              <IconSettings size={24} />
-            </ActionIcon>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
