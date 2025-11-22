@@ -1,7 +1,9 @@
 import { Text } from "@mantine/core";
 import { StationCard } from "./StationCard";
 import { SkeletonGrid } from "./SkeletonCard";
+import { CompactStationList } from "~/components/CompactStationList";
 import type { Station } from "~/types/radio";
+import { useState, useEffect } from "react";
 
 type StationGridProps = {
   stations: Station[];
@@ -22,6 +24,15 @@ export function StationGrid({
   favoriteStationIds,
   onToggleFavorite,
 }: StationGridProps) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   if (isFetchingExplore) {
     return <SkeletonGrid count={6} />;
   }
@@ -36,6 +47,22 @@ export function StationGrid({
     );
   }
 
+  // Mobile: Use compact list view
+  if (isMobile) {
+    return (
+      <div className="space-y-2">
+        <CompactStationList
+          stations={stations}
+          nowPlayingId={nowPlaying?.uuid}
+          favoriteIds={favoriteStationIds}
+          onPlayStation={onPlayStation}
+          onToggleFavorite={onToggleFavorite}
+        />
+      </div>
+    );
+  }
+
+  // Desktop: Use grid view
   return (
     <div id="station-grid" className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {stations.map((station, index) => {

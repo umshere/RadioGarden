@@ -29,13 +29,13 @@ export function AtlasFilters({
   onContinentSelect,
 }: AtlasFiltersProps) {
   return (
-    <div id="atlas-filters" className="scroll-track overflow-x-auto pb-1">
+    <div id="atlas-filters" className="scroll-track overflow-x-auto pb-1 pt-2 pl-1">
       <div className="flex min-w-max items-center gap-2">
         <button
           type="button"
-          className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${activeContinent === null
-              ? "bg-slate-900 text-white shadow-md"
-              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 shadow-sm"
+          className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all ${activeContinent === null
+            ? "bg-[#e0e5ec] text-slate-800 shadow-[inset_2px_2px_4px_#b8b9be,inset_-2px_-2px_4px_#ffffff]"
+            : "bg-[#e0e5ec] text-slate-600 border-0 hover:text-slate-900 shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff] active:shadow-[inset_2px_2px_4px_#b8b9be,inset_-2px_-2px_4px_#ffffff]"
             }`}
           onClick={() => onContinentSelect(null)}
         >
@@ -46,9 +46,9 @@ export function AtlasFilters({
           <button
             key={continent}
             type="button"
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${activeContinent === continent
-                ? "bg-slate-900 text-white shadow-md"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 shadow-sm"
+            className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all ${activeContinent === continent
+              ? "bg-[#e0e5ec] text-slate-800 shadow-[inset_2px_2px_4px_#b8b9be,inset_-2px_-2px_4px_#ffffff]"
+              : "bg-[#e0e5ec] text-slate-600 border-0 hover:text-slate-900 shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff] active:shadow-[inset_2px_2px_4px_#b8b9be,inset_-2px_-2px_4px_#ffffff]"
               }`}
             onClick={() => onContinentSelect(continent)}
           >

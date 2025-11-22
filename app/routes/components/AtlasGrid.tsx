@@ -42,8 +42,8 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
 
   if (displaySections.length === 0) {
     return (
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-12 text-center backdrop-blur">
-        <Text size="md" c="rgba(244,237,224,0.65)">
+      <div className="rounded-3xl border border-slate-200/30 bg-[#e0e5ec] p-12 text-center shadow-[inset_3px_3px_6px_#b8b9be,inset_-3px_-3px_6px_#ffffff]">
+        <Text size="md" c="dimmed">
           No countries match your search. Try a different name or clear the filters to see all regions.
         </Text>
       </div>
@@ -65,7 +65,7 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.1 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="rounded-2xl border border-slate-200 bg-white/50 p-5 shadow-sm md:p-6"
+            className="rounded-2xl border border-slate-200/30 bg-[#e0e5ec] p-5 shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] md:p-6"
           >
             <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="flex items-start gap-3">
@@ -73,15 +73,16 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
                   size={44}
                   radius="lg"
                   style={{
-                    background: "#f1f5f9",
-                    border: "1px solid #e2e8f0",
-                    color: "#475569",
+                    background: "#e0e5ec",
+                    border: "none",
+                    color: "#64748b",
+                    boxShadow: "2px 2px 4px #b8b9be, -2px -2px 4px #ffffff",
                   }}
                 >
                   {continentIcons[continent] ?? <IconWorld size={22} />}
                 </ThemeIcon>
                 <div>
-                  <Title order={3} style={{ fontSize: "1.35rem", fontWeight: 700, color: "#0f172a" }}>
+                  <Title order={3} style={{ fontSize: "1.35rem", fontWeight: 700, color: "#334155" }}>
                     {continent}
                   </Title>
                   <Text size="sm" c="dimmed">
@@ -95,7 +96,7 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
                 variant="light"
                 color="gray"
                 leftSection={<IconBroadcast size={14} />}
-                className="bg-slate-100 text-slate-600 border border-slate-200"
+                className="bg-[#e0e5ec] text-slate-600 border-0 shadow-[inset_2px_2px_4px_#b8b9be,inset_-2px_-2px_4px_#ffffff]"
               >
                 {total.toLocaleString()} tuned-in listeners
               </Badge>
@@ -112,7 +113,7 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
                 >
                   <Link
                     to={`/?country=${encodeURIComponent(country.name)}`}
-                    className="group flex flex-col h-full relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-slate-300"
+                    className="group flex flex-col h-full relative overflow-hidden rounded-2xl border border-slate-200/30 bg-[#e0e5ec] p-4 shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff] transition-all hover:shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff]"
                     prefetch="intent"
                   >
                     <div className="flex flex-col gap-3 flex-1">
@@ -121,14 +122,14 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
                           iso={country.iso_3166_1}
                           title={`${country.name} flag`}
                           size={32}
-                          className="rounded-md shadow-sm border border-slate-100"
+                          className="rounded-md shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff] border border-slate-200/20"
                         />
                         <Badge
                           radius="xl"
                           size="xs"
                           variant="light"
                           color="gray"
-                          className="px-1.5 h-5 font-mono"
+                          className="px-1.5 h-5 font-mono bg-[#e0e5ec] shadow-[inset_1px_1px_2px_#b8b9be,inset_-1px_-1px_2px_#ffffff]"
                         >
                           {country.stationcount}
                         </Badge>
@@ -144,9 +145,9 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="mt-3 pt-3 border-t border-slate-300/30">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover:text-slate-600 transition-colors">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-slate-700 transition-colors">
                           Explore
                         </span>
                         {onPreviewCountry && (
@@ -159,7 +160,7 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
                               e.stopPropagation();
                               onPreviewCountry(country.name);
                             }}
-                            className="text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                            className="text-slate-500 hover:text-slate-700 bg-[#e0e5ec] shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff] active:shadow-[inset_2px_2px_4px_#b8b9be,inset_-2px_-2px_4px_#ffffff]"
                             aria-label={`Preview ${country.name}`}
                           >
                             <IconPlayerPlayFilled size={12} />
@@ -171,7 +172,7 @@ export function AtlasGrid({ displaySections, onPreviewCountry }: AtlasGridProps)
                     {/* Pending overlay when navigating to this country */}
                     {navigation.state !== "idle" && pendingCountry === country.name && (
                       <div
-                        className="absolute inset-0 z-[1] grid place-items-center bg-white/60 backdrop-blur-[1px]"
+                        className="absolute inset-0 z-[1] grid place-items-center bg-[#e0e5ec]/80 backdrop-blur-[1px]"
                         aria-hidden="true"
                       >
                         <Loader size="sm" color="dark" />

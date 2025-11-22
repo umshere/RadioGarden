@@ -67,24 +67,26 @@ export function HeroSection({
   // Floating music notes animation data - deterministic seed based on index
   const floatingNotes = useMemo(
     () =>
-      Array.from({ length: 12 }).map((_, i) => {
+      Array.from({ length: 18 }).map((_, i) => {
         // Use index-based deterministic values to avoid hydration mismatch
-        const seed = i / 12;
+        const seed = i / 18;
+        const isEven = i % 2 === 0;
         return {
           id: i,
-          delay: seed * 8,
-          duration: 15 + seed * 10,
-          startX: (i * 8.33) % 100,
-          endX: ((i * 8.33) + 50) % 100,
-          startY: 110,
-          midY: 50 + (seed * 20),
-          endY: -20 - (seed * 10),
-          rotation: i * 30,
-          scale1: 0.4 + (seed * 0.3),
-          scale2: 0.8 + (seed * 0.4),
-          opacity: 0.2 + (seed * 0.15),
-          note: ['🎵', '🎶', '🎼', '🎹', '🎺', '🎸', '🎻', '🎤'][i % 8],
-          blur: seed * 1.2,
+          delay: seed * 6,
+          duration: 12 + seed * 8,
+          startX: (i * 5.5) % 100,
+          endX: ((i * 5.5) + (isEven ? 60 : -60)) % 100,
+          startY: 115,
+          midY: 40 + (seed * 30),
+          endY: -25 - (seed * 15),
+          rotation: i * 25,
+          scale1: 0.6 + (seed * 0.5),
+          scale2: 1.1 + (seed * 0.6),
+          opacity: 0.5 + (seed * 0.35),
+          note: ['🎵', '🎶', '🎼', '🎹', '🎺', '🎸', '🎻', '🎤', '🎧', '🎙️'][i % 10],
+          blur: seed * 0.3,
+          color: isEven ? 'rgba(99, 102, 241, 0.3)' : 'rgba(168, 85, 247, 0.3)', // Indigo and purple
         };
       }),
     []
@@ -181,12 +183,70 @@ export function HeroSection({
         border: '1px solid #e8e8e8',
       }}
     >
-      {/* Floating Music Notes Animation - Random & Stable */}
+      {/* Animated Gradient Background Orbs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-40">
+        <motion.div
+          className="absolute w-96 h-96 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+            filter: 'blur(40px)',
+          }}
+          animate={{
+            x: ['-20%', '120%'],
+            y: ['-10%', '110%'],
+            scale: heroHovered ? [1, 1.5, 1] : [1, 1.3, 1],
+            opacity: heroHovered ? [0.4, 0.6, 0.4] : [0.4, 0.4, 0.4],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
+        <motion.div
+          className="absolute w-80 h-80 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, transparent 70%)',
+            filter: 'blur(50px)',
+          }}
+          animate={{
+            x: ['120%', '-20%'],
+            y: ['110%', '-10%'],
+            scale: heroHovered ? [1.2, 0.8, 1.2] : [1.2, 1, 1.2],
+            opacity: heroHovered ? [0.4, 0.7, 0.4] : [0.4, 0.4, 0.4],
+          }}
+          transition={{
+            duration: 30,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
+        <motion.div
+          className="absolute w-72 h-72 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, transparent 70%)',
+            filter: 'blur(60px)',
+          }}
+          animate={{
+            x: ['50%', '50%'],
+            y: ['-20%', '120%'],
+            scale: heroHovered ? [1, 1.8, 1] : [1, 1.5, 1],
+            opacity: heroHovered ? [0.4, 0.6, 0.4] : [0.4, 0.4, 0.4],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
+      </div>
+
+      {/* Floating Music Notes Animation - Enhanced & Visible */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {isMounted && floatingNotes.map((note) => (
           <motion.div
             key={note.id}
-            className="absolute text-2xl"
+            className="absolute text-3xl md:text-4xl"
             initial={{
               x: `${note.startX}vw`,
               y: `${note.startY}%`,
@@ -198,8 +258,8 @@ export function HeroSection({
               y: [`${note.startY}%`, `${note.midY}%`, `${note.endY}%`],
               x: [`${note.startX}vw`, `${(note.startX + note.endX) / 2}vw`, `${note.endX}vw`],
               rotate: [note.rotation, note.rotation + 180, note.rotation + 360],
-              scale: [note.scale1, note.scale2, note.scale1 * 0.8],
-              opacity: [0, note.opacity, note.opacity * 0.6, 0],
+              scale: [note.scale1, note.scale2, note.scale1 * 0.6],
+              opacity: [0, note.opacity, note.opacity * 0.7, 0],
             }}
             transition={{
               duration: note.duration,
@@ -208,8 +268,8 @@ export function HeroSection({
               ease: "easeInOut",
             }}
             style={{
-              filter: `blur(${note.blur}px)`,
-              color: 'rgba(71, 85, 105, 0.15)',
+              filter: `blur(${note.blur}px) drop-shadow(0 2px 8px ${note.color})`,
+              color: note.color,
             }}
           >
             {note.note}
@@ -244,9 +304,7 @@ export function HeroSection({
           </motion.span>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-white p-2 shadow-sm ring-1 ring-slate-100">
-                <PassportStampIcon size={56} id="preview" />
-              </div>
+              <PassportStampIcon size={80} id="preview" />
               <div className="flex flex-col">
                 <motion.span
                   className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl md:text-4xl"

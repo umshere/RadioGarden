@@ -1,6 +1,3 @@
-import { motion } from "framer-motion";
-import { BRAND } from "~/constants/brand";
-
 type PassportStampIconProps = {
   size?: number;
   animated?: boolean;
@@ -14,26 +11,29 @@ export default function PassportStampIcon({
   animated = true,
   id,
 }: PassportStampIconProps) {
-  const motionProps = animated
-    ? {
-        animate: { rotate: [-3, 3, -3], scale: [0.97, 1, 0.97] },
-        transition: {
-          duration: 12,
-          repeat: Infinity,
-          repeatType: "mirror" as const,
-          ease: [0.42, 0, 0.58, 1] as const,
-        },
-      }
-    : {};
-
   return (
-    <motion.img
-      src="/icon.png"
-      width={size}
-      height={size}
-      alt="Radio Passport"
-      style={{ filter: "drop-shadow(0 4px 12px rgba(199,158,73,0.3))" }}
-      {...motionProps}
-    />
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '12px',
+        background: '#e0e5ec',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: '6px 6px 12px #b8b9be, -6px -6px 12px #ffffff',
+      }}
+    >
+      <span
+        style={{
+          fontSize: size * 0.4,
+          fontWeight: 'bold',
+          color: '#64748b',
+          fontFamily: 'Inter, sans-serif',
+        }}
+      >
+        RP
+      </span>
+    </div>
   );
 }

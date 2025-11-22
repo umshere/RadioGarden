@@ -18,6 +18,21 @@
   }
 }
 
+@keyframes loading {
+  0% {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  50% {
+    transform: scaleX(0.7);
+    transform-origin: left;
+  }
+  100% {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
 @keyframes heroOrbit {
   0% {
     transform: rotate(0deg) scale(0.96);
@@ -424,10 +439,9 @@
 
   .station-card {
     @apply relative flex h-full flex-col gap-4 overflow-hidden rounded-2xl border p-4 transition md:gap-5 md:p-5;
-    border-color: #e6e6e6;
-    background: #f8f8f8;
+    border-color: rgba(203, 213, 225, 0.3);
+    background: #e0e5ec;
     min-height: 0;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
   }
 
   @media (min-width: 768px) {
@@ -439,7 +453,6 @@
   @media (max-width: 640px) {
     .station-card {
       border-radius: 1.35rem;
-      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
       padding: 1rem;
       gap: 0.75rem;
     }
@@ -473,26 +486,22 @@
   }
 
   .station-card:hover {
-    border-color: #d4d4d4;
+    border-color: rgba(148, 163, 184, 0.5);
     transform: translateY(-3px);
-    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
   }
 
   .station-card--active {
     border-color: rgba(15, 23, 42, 0.65);
     background: #ffffff;
-    box-shadow: 0 18px 32px -16px rgba(15, 23, 42, 0.35);
   }
 
   .station-card--favorite {
     border-color: rgba(244, 63, 94, 0.45);
-    box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.25), 0 18px 32px -16px rgba(244, 63, 94, 0.35);
   }
 
   .station-card--warn:not(.station-card--active) {
     border-color: rgba(250, 204, 21, 0.65);
     background: #fffdfa;
-    box-shadow: 0 12px 28px -18px rgba(250, 204, 21, 0.6);
   }
 
   .station-card--error:not(.station-card--active) {
@@ -1673,7 +1682,9 @@
 
   .quick-retune-container {
     position: fixed;
-    bottom: calc(9rem + env(safe-area-inset-bottom, 0px)); /* Moved up to clear player dock */
+    bottom: calc(
+      9rem + env(safe-area-inset-bottom, 0px)
+    ); /* Moved up to clear player dock */
     right: 1.25rem;
     display: flex;
     flex-direction: column;
@@ -1869,7 +1880,11 @@
   .header-meter__bar {
     width: 0.2rem;
     border-radius: 9999px;
-    background: linear-gradient(180deg, rgba(248, 180, 0, 0.9), rgba(91, 142, 191, 0.85));
+    background: linear-gradient(
+      180deg,
+      rgba(248, 180, 0, 0.9),
+      rgba(91, 142, 191, 0.85)
+    );
     transition: height 0.15s ease, opacity 0.15s ease;
   }
 

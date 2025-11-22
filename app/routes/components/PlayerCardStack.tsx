@@ -330,15 +330,7 @@ export function PlayerCardStack({
         <div className="travel-log-shell">
           <div className="rounded-3xl border border-slate-200 bg-white/50 p-6 shadow-sm">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <img
-                src="/radio-passport-icon.png"
-                alt="Radio Passport"
-                style={{
-                  width: '2.5rem',
-                  height: '2.5rem',
-                  filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
-                }}
-              />
+              <PassportStampIcon size={40} />
               <div>
                 <Title order={2} style={{ fontSize: "1.45rem", fontWeight: 700, color: "#0f172a" }}>
                   Travel log

@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { usePlayerStore } from "~/state/playerStore";
 import { useUIStore } from "~/state/uiStore";
+import { neomorphicButtonSmall, neomorphicButtonPrimary } from "~/utils/buttonStyles";
 
 export default function PlayerDock() {
   const {
@@ -42,20 +43,44 @@ export default function PlayerDock() {
     return (88.0 + normalized * range).toFixed(1);
   }, [nowPlaying?.uuid]);
 
+  const frequencyPercent = useMemo(() => {
+    const freqNum = parseFloat(frequency);
+    return ((freqNum - 88.0) / 20.0) * 100;
+  }, [frequency]);
+
+  const ticks = useMemo(() => {
+    const freqNum = parseFloat(frequency);
+    const tickStart = 88;
+    const tickEnd = 108;
+    const tickCount = 21;
+    return Array.from({ length: tickCount }, (_, i) => ({
+      value: tickStart + i,
+      isNear: Math.abs((tickStart + i) - freqNum) < 2,
+    }));
+  }, [frequency]);
+
   const handleNext = useCallback(() => {
     if (queue.length === 0) return;
+
+    // Calculate next index with proper wrapping
     const nextIndex = (currentStationIndex + 1) % queue.length;
     const nextStation = queue[nextIndex];
+
     if (nextStation) {
+      // Update the index in the store before starting the station
       startStation(nextStation, { preserveQueue: true });
     }
   }, [queue, currentStationIndex, startStation]);
 
   const handlePrev = useCallback(() => {
     if (queue.length === 0) return;
+
+    // Calculate previous index with proper wrapping
     const prevIndex = (currentStationIndex - 1 + queue.length) % queue.length;
     const prevStation = queue[prevIndex];
+
     if (prevStation) {
+      // Update the index in the store before starting the station
       startStation(prevStation, { preserveQueue: true });
     }
   }, [queue, currentStationIndex, startStation]);
@@ -93,100 +118,199 @@ export default function PlayerDock() {
         )}
       </AnimatePresence>
 
-      <aside className="pointer-events-none fixed bottom-6 left-1/2 -translate-x-1/2 z-30 hidden w-full max-w-2xl px-4 lg:block">
+      <aside className="pointer-events-none fixed bottom-6 left-1/2 -translate-x-1/2 z-30 hidden w-full max-w-3xl px-4 lg:block">
         <div
-          className="pointer-events-auto rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-xl shadow-lg"
+          className="pointer-events-auto rounded-2xl bg-[#e0e5ec] backdrop-blur-xl border border-slate-300/30"
           onClick={() => setIsExpanded(true)}
         >
-          <div className="flex items-center gap-4 p-3">
+          <div className="flex items-center gap-4 p-4">
             {/* Artwork */}
-            <div className="h-14 w-14 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center bg-slate-50 flex-shrink-0">
+            <div className="h-16 w-16 rounded-xl overflow-hidden border border-slate-200/50 flex items-center justify-center bg-slate-100 flex-shrink-0 shadow-inner">
               {nowPlaying.favicon ? (
                 <img src={nowPlaying.favicon} alt="artwork" className="w-full h-full object-cover" />
               ) : (
-                <div className="text-lg font-mono text-slate-300">FM</div>
+                <div className="text-xl font-mono text-slate-400 font-bold">FM</div>
               )}
             </div>
 
-            {/* Station Info + Frequency Display */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2">
+            {/* Tuner Display Section */}
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
+              {/* Station Info Row */}
+              <div className="flex items-baseline gap-3">
                 <Text size="sm" fw={700} className="truncate text-slate-900">
                   {title}
                 </Text>
-                <span className="font-mono text-xs text-slate-400">
-                  {frequency} MHz
-                </span>
+                <Text size="xs" c="dimmed" className="truncate">
+                  {subtitle}
+                </Text>
               </div>
-              <Text size="xs" c="dimmed" className="truncate">
-                {subtitle}
-              </Text>
+
+              {/* Horizontal Tuner Scale */}
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  height: "36px",
+                  background: "rgba(203,213,225,0.3)",
+                  borderRadius: "8px",
+                  padding: "0 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  boxShadow: "inset 3px 3px 6px rgba(184,185,190,0.4), inset -3px -3px 6px rgba(255,255,255,0.5)",
+                }}
+              >
+                {/* Tick marks */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: "0 12px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  {ticks.map((tick, i) => {
+                    const isMajor = tick.value % 5 === 0;
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "2px",
+                          opacity: tick.isNear ? 1 : 0.3,
+                          transition: "opacity 0.3s ease",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "1.5px",
+                            height: isMajor ? "14px" : "8px",
+                            background: "#64748b",
+                            borderRadius: "999px",
+                          }}
+                        />
+                        {isMajor && (
+                          <span
+                            style={{
+                              fontSize: "0.55rem",
+                              fontWeight: 600,
+                              color: "#64748b",
+                            }}
+                          >
+                            {tick.value}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Red needle indicator */}
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `calc(${frequencyPercent}% + 12px - 2px)`,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "3px",
+                    height: "24px",
+                    background: "#ef4444",
+                    borderRadius: "999px",
+                    boxShadow: "0 0 8px rgba(239,68,68,0.6)",
+                    zIndex: 10,
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `calc(${frequencyPercent}% + 12px - 6px)`,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "12px",
+                    height: "12px",
+                    background: "#ef4444",
+                    borderRadius: "50%",
+                    zIndex: 11,
+                  }}
+                />
+
+                {/* Frequency Display */}
+                <div
+                  style={{
+                    position: "absolute",
+                    right: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    fontFamily: "monospace",
+                    fontSize: "1.25rem",
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    zIndex: 12,
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: "4px",
+                  }}
+                >
+                  <span>{frequency}</span>
+                  <span style={{ fontSize: "0.65rem", color: "#64748b" }}>MHz</span>
+                </div>
+              </div>
             </div>
 
-            {/* Transport & Quick Retune Controls */}
-            <div className="flex items-center gap-1">
+            {/* Transport Controls with Neomorphic Style */}
+            <div className="flex items-center gap-2">
               <Tooltip label="Quick Retune" position="top" withArrow>
-                <ActionIcon
-                  size="md"
-                  radius="xl"
-                  variant="subtle"
-                  color="violet"
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e0e5ec] text-violet-600 shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff] transition-all hover:text-violet-700"
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleQuickRetune();
                   }}
                   aria-label="Quick Retune"
-                  className="text-slate-400 hover:text-violet-600 hover:bg-violet-50"
                 >
                   <IconMapPin size={16} />
-                </ActionIcon>
+                </button>
               </Tooltip>
 
               <Tooltip label="Previous" position="top" withArrow>
-                <ActionIcon
-                  size="md"
-                  radius="xl"
-                  variant="subtle"
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e0e5ec] text-slate-500 shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff] transition-all hover:text-slate-800"
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePrev();
                   }}
                   aria-label="Previous"
-                  className="text-slate-400 hover:text-slate-800 hover:bg-slate-50"
                 >
                   <IconPlayerSkipBackFilled size={16} />
-                </ActionIcon>
+                </button>
               </Tooltip>
 
               <Tooltip label={isPlaying ? "Pause" : "Play"} position="top" withArrow>
-                <ActionIcon
-                  size="lg"
-                  radius="xl"
+                <button
+                  className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-900 text-white shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:scale-95 transition-transform hover:bg-slate-800"
                   onClick={(e) => {
                     e.stopPropagation();
                     togglePlay();
                   }}
                   aria-label={isPlaying ? "Pause" : "Play"}
-                  className="bg-slate-900 text-white hover:bg-slate-800 shadow-md"
                 >
-                  {isPlaying ? <IconPlayerPauseFilled size={18} /> : <IconPlayerPlayFilled size={18} />}
-                </ActionIcon>
+                  {isPlaying ? <IconPlayerPauseFilled size={20} /> : <IconPlayerPlayFilled size={20} />}
+                </button>
               </Tooltip>
 
               <Tooltip label="Next" position="top" withArrow>
-                <ActionIcon
-                  size="md"
-                  radius="xl"
-                  variant="subtle"
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e0e5ec] text-slate-500 shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff] transition-all hover:text-slate-800"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleNext();
                   }}
                   aria-label="Next"
-                  className="text-slate-400 hover:text-slate-800 hover:bg-slate-50"
                 >
                   <IconPlayerSkipForwardFilled size={16} />
-                </ActionIcon>
+                </button>
               </Tooltip>
             </div>
           </div>
@@ -197,16 +321,16 @@ export default function PlayerDock() {
       <div
         className="lg:hidden fixed left-0 right-0 z-40 px-3 transition-all duration-300 ease-out"
         style={{
-          bottom: "calc(4rem + env(safe-area-inset-bottom) + 12px)"
+          bottom: "calc(env(safe-area-inset-bottom) + 12px)"
         }}
       >
         <div
           data-raptor={raptorMiniEnabled ? "true" : "false"}
           onClick={() => setIsExpanded(true)}
-          className={`rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md px-3 py-2.5 shadow-xl shadow-slate-900/10 active:scale-[0.98] transition-transform cursor-pointer ${raptorMiniEnabled ? 'py-1.5' : 'py-2.5'}`}
+          className={`rounded-2xl bg-[#e0e5ec] border border-slate-300/30 px-3 active:scale-[0.98] transition-transform cursor-pointer ${raptorMiniEnabled ? 'py-2' : 'py-3'}`}
         >
-          <div className="flex items-center gap-3">
-            <div className={`${raptorMiniEnabled ? 'h-8 w-8' : 'h-10 w-10'} rounded-lg overflow-hidden border border-slate-100 flex items-center justify-center bg-slate-100 text-sm flex-shrink-0 text-slate-400`}>
+          <div className="flex items-center gap-3 mb-2">
+            <div className={`${raptorMiniEnabled ? 'h-10 w-10' : 'h-12 w-12'} rounded-xl overflow-hidden border border-slate-200/50 flex items-center justify-center bg-slate-100 text-sm flex-shrink-0 text-slate-500 font-bold shadow-inner`}>
               {nowPlaying.favicon ? (
                 <img src={nowPlaying.favicon} alt="artwork" className="w-full h-full object-cover" />
               ) : (
@@ -220,67 +344,152 @@ export default function PlayerDock() {
 
             {/* Mobile Controls */}
             <div className="flex items-center gap-1">
-              {/* Quick Retune (Toggle Widget) */}
-              <ActionIcon
-                size="md"
-                radius="xl"
-                variant="subtle"
-                color="violet"
+              {/* Quick Retune */}
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e0e5ec] text-violet-600 shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] active:shadow-[inset_3px_3px_6px_#b8b9be,inset_-3px_-3px_6px_#ffffff] transition-all"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleQuickRetune();
                 }}
                 aria-label="Quick Retune"
-                className="text-slate-400 hover:text-violet-600 hover:bg-violet-50"
               >
-                <IconMapPin size={18} />
-              </ActionIcon>
+                <IconMapPin size={16} />
+              </button>
 
               {/* Prev */}
-              <ActionIcon
-                size="md"
-                radius="xl"
-                variant="subtle"
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e0e5ec] text-slate-500 shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] active:shadow-[inset_3px_3px_6px_#b8b9be,inset_-3px_-3px_6px_#ffffff] transition-all"
                 onClick={(e) => {
                   e.stopPropagation();
                   handlePrev();
                 }}
                 aria-label="Previous"
-                className="text-slate-400 hover:text-slate-800 hover:bg-slate-50"
               >
-                <IconPlayerSkipBackFilled size={18} />
-              </ActionIcon>
+                <IconPlayerSkipBackFilled size={16} />
+              </button>
 
               {/* Play/Pause */}
-              <ActionIcon
-                size="lg"
-                radius="xl"
-                variant="filled"
-                color={isPlaying ? "gray" : "dark"}
+              <button
+                className={`flex h-11 w-11 items-center justify-center rounded-xl shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] active:scale-95 transition-transform ${isPlaying ? "bg-slate-800 text-white hover:bg-slate-700" : "bg-slate-900 text-white hover:bg-slate-800"
+                  }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   togglePlay();
                 }}
                 aria-label={isPlaying ? "Pause" : "Play"}
-                className={isPlaying ? "bg-slate-200 text-slate-600 hover:bg-slate-300" : "bg-slate-900 text-white hover:bg-slate-800 shadow-md"}
               >
                 {isPlaying ? <IconPlayerPauseFilled size={18} /> : <IconPlayerPlayFilled size={18} />}
-              </ActionIcon>
+              </button>
 
               {/* Next */}
-              <ActionIcon
-                size="md"
-                radius="xl"
-                variant="subtle"
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e0e5ec] text-slate-500 shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] active:shadow-[inset_3px_3px_6px_#b8b9be,inset_-3px_-3px_6px_#ffffff] transition-all"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleNext();
                 }}
                 aria-label="Next"
-                className="text-slate-400 hover:text-slate-800 hover:bg-slate-50"
               >
-                <IconPlayerSkipForwardFilled size={18} />
-              </ActionIcon>
+                <IconPlayerSkipForwardFilled size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Tuner Display */}
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              height: "28px",
+              background: "rgba(203,213,225,0.3)",
+              borderRadius: "6px",
+              padding: "0 8px",
+              display: "flex",
+              alignItems: "center",
+              boxShadow: "inset 2px 2px 4px rgba(184,185,190,0.4), inset -2px -2px 4px rgba(255,255,255,0.5)",
+            }}
+          >
+            {/* Simplified tick marks for mobile */}
+            <div
+              style={{
+                position: "absolute",
+                inset: "0 8px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              {ticks.filter((_, i) => i % 5 === 0).map((tick, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "2px",
+                    opacity: tick.isNear ? 1 : 0.25,
+                    transition: "opacity 0.3s ease",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "1.5px",
+                      height: "12px",
+                      background: "#64748b",
+                      borderRadius: "999px",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Red needle indicator */}
+            <div
+              style={{
+                position: "absolute",
+                left: `calc(${frequencyPercent}% + 8px - 1.5px)`,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "2.5px",
+                height: "18px",
+                background: "#ef4444",
+                borderRadius: "999px",
+                zIndex: 10,
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: `calc(${frequencyPercent}% + 8px - 4px)`,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: "8px",
+                height: "8px",
+                background: "#ef4444",
+                borderRadius: "50%",
+                zIndex: 11,
+              }}
+            />
+
+            {/* Frequency Display */}
+            <div
+              style={{
+                position: "absolute",
+                right: "8px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontFamily: "monospace",
+                fontSize: "0.85rem",
+                fontWeight: "bold",
+                color: "#0f172a",
+                zIndex: 12,
+                display: "flex",
+                alignItems: "baseline",
+                gap: "2px",
+              }}
+            >
+              <span>{frequency}</span>
+              <span style={{ fontSize: "0.55rem", color: "#64748b" }}>MHz</span>
             </div>
           </div>
         </div>

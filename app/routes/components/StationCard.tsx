@@ -83,7 +83,7 @@ export function StationCard({
       <div className={`station-card h-full flex flex-col justify-between ${cardStatusClass}`}>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-            <div className="relative aspect-[5/3] w-full overflow-hidden rounded-3xl border border-white/60 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.06)] sm:aspect-square sm:h-16 sm:w-16 sm:rounded-2xl sm:border-none">
+            <div className="relative aspect-[5/3] w-full overflow-hidden rounded-2xl border border-slate-300/30 bg-white sm:aspect-square sm:h-16 sm:w-16 sm:rounded-xl sm:border-slate-300/30 shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff]">
               {station.favicon ? (
                 <img
                   src={station.favicon}
@@ -110,7 +110,7 @@ export function StationCard({
                   {station.name}
                 </Text>
                 {reliabilityBadge && (
-                  <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm ring-1 ring-slate-900/5">
+                  <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-[11px] font-medium text-slate-500 ring-1 ring-slate-900/5">
                     <span
                       className="inline-flex h-1.5 w-1.5 rounded-full"
                       style={{ background: statusTone?.dot }}
@@ -138,7 +138,7 @@ export function StationCard({
               size="sm"
               leftSection={<IconPlayerPlayFilled size={16} />}
               variant="default"
-              className="flex-1 border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-lg"
+              className="flex-1 bg-[#e0e5ec] text-slate-700 border-0 shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] active:shadow-[inset_3px_3px_6px_#b8b9be,inset_-3px_-3px_6px_#ffffff] transition-all hover:shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff]"
               aria-label={hasStream ? `Play ${station.name}` : `Visit ${station.name}`}
               {...primaryActionProps}
             >
@@ -154,7 +154,7 @@ export function StationCard({
                 }}
                 variant="subtle"
                 color={isFavorite ? "red" : "gray"}
-                className={`border border-transparent text-slate-500 transition hover:text-red-500 ${isFavorite ? "bg-rose-50 text-rose-500" : "bg-white"}`}
+                className={`border-0 text-slate-500 transition hover:text-red-500 ${isFavorite ? "bg-rose-100 text-rose-500 shadow-[inset_2px_2px_4px_#b8b9be,inset_-2px_-2px_4px_#ffffff]" : "bg-[#e0e5ec] shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff] active:shadow-[inset_2px_2px_4px_#b8b9be,inset_-2px_-2px_4px_#ffffff]"}`}
                 aria-pressed={isFavorite}
                 aria-label={isFavorite ? `Unfavorite ${station.name}` : `Favorite ${station.name}`}
               >

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Group, TextInput } from "@mantine/core";
 import { IconMicrophone, IconWand } from "@tabler/icons-react";
 import type { ReactNode } from "react";
+import { neomorphicButtonLarge, neomorphicButtonSmall } from "~/utils/buttonStyles";
 
 type JourneyComposerProps = {
   value?: string;
@@ -52,21 +53,16 @@ export default function JourneyComposer({
   if (compact && !isExpanded) {
     return (
       <div className="flex justify-end">
-        <Button
-          variant="subtle"
-          color="dark"
-          size="xs"
-          radius="xl"
-          leftSection={<IconWand size={14} />}
+        <button
           onClick={() => setIsExpanded(true)}
-          className={
-            isDarkTone
-              ? "bg-white/10 hover:bg-white/20 text-slate-100 transition-colors border border-white/15 shadow-[0_15px_40px_rgba(3,7,18,0.6)]"
-              : "bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition-colors border border-slate-200 shadow-sm"
-          }
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${isDarkTone
+              ? "bg-white/10 hover:bg-white/20 text-slate-100 border border-white/15 shadow-[0_15px_40px_rgba(3,7,18,0.6)]"
+              : "bg-[#e0e5ec] text-slate-600 shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff] hover:text-slate-800"
+            }`}
         >
+          <IconWand size={14} />
           Refine Mix
-        </Button>
+        </button>
       </div>
     );
   }
@@ -78,12 +74,17 @@ export default function JourneyComposer({
     const heroShellClass = isDarkTone
       ? "relative bg-white/10 backdrop-blur-2xl rounded-3xl border border-white/15 p-2 shadow-[0_35px_120px_rgba(3,7,18,0.85)]"
       : "relative bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 p-2 shadow-xl";
-    const heroPrimaryButtonClass = isDarkTone
-      ? "bg-white/90 text-slate-900 hover:bg-white shadow-[0_25px_55px_rgba(3,7,18,0.65)] px-8 h-12 text-base font-semibold border border-white/20"
-      : "bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl px-8 h-12 text-base font-semibold";
-    const heroVoiceButtonClass = isDarkTone
-      ? "h-12 px-6 bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-lg"
-      : "h-12 px-6 bg-white hover:bg-slate-50 text-slate-500 border border-slate-200 shadow-sm";
+
+    // Use neomorphic button style for hero buttons
+    const heroPrimaryButtonClass = `${neomorphicButtonLarge} ${isDarkTone
+        ? "bg-white/90 text-slate-900 hover:bg-white border border-white/20"
+        : ""
+      }`;
+
+    const heroVoiceButtonClass = `${neomorphicButtonSmall} ${isDarkTone
+        ? "bg-white/10 hover:bg-white/20 text-white border border-white/20"
+        : ""
+      }`;
 
     return (
       <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
@@ -100,9 +101,8 @@ export default function JourneyComposer({
               disabled={loading}
               className="w-full"
               classNames={{
-                input: `text-center text-2xl md:text-3xl font-light ${
-                  isDarkTone ? "text-slate-50 placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"
-                } py-6 px-6 h-auto bg-transparent`,
+                input: `text-center text-2xl md:text-3xl font-light ${isDarkTone ? "text-slate-50 placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"
+                  } py-6 px-6 h-auto bg-transparent`,
               }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -125,26 +125,30 @@ export default function JourneyComposer({
         </div>
 
         <div className="mt-8 flex items-center gap-4">
-          <Button
-            size="lg"
-            radius="xl"
+          <button
             onClick={handleSubmit}
-            loading={loading}
-            className={heroPrimaryButtonClass}
-            rightSection={<IconWand size={18} />}
+            disabled={loading}
+            className={`${heroPrimaryButtonClass} flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            {ctaLabel}
-          </Button>
+            {loading ? (
+              <span className="relative flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-slate-500"></span>
+              </span>
+            ) : (
+              <>
+                {ctaLabel}
+                <IconWand size={18} />
+              </>
+            )}
+          </button>
           {showVoiceButton && (
-            <Button
-              variant="light"
-              radius="xl"
-              size="lg"
-              className={heroVoiceButtonClass}
+            <button
               onClick={onVoice}
+              className={`${heroVoiceButtonClass} flex items-center justify-center`}
             >
               <IconMicrophone size={20} />
-            </Button>
+            </button>
           )}
         </div>
 
@@ -163,9 +167,8 @@ export default function JourneyComposer({
         <span className="font-medium">Compose your journey</span>
         <div className="flex items-center gap-3">
           <span
-            className={`text-xs uppercase tracking-[0.35em] font-bold ${
-              isDarkTone ? "text-slate-300" : "text-slate-400"
-            }`}
+            className={`text-xs uppercase tracking-[0.35em] font-bold ${isDarkTone ? "text-slate-300" : "text-slate-400"
+              }`}
           >
             AI assistant
           </span>
@@ -215,27 +218,23 @@ export default function JourneyComposer({
           className={
             isDarkTone
               ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-900 font-semibold shadow-lg hover:shadow-xl hover:translate-y-[-1px]"
-              : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md hover:shadow-lg hover:translate-y-[-1px] transition-all"
+              : "rounded-2xl bg-slate-900 text-white shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] hover:bg-slate-800 active:scale-95 transition-all px-6 h-11 font-semibold"
           }
         >
           {ctaLabel}
         </Button>
         {secondarySlot}
         {showVoiceButton && (
-          <Button
-            variant="light"
-            radius="xl"
-            size="md"
-            leftSection={<IconMicrophone size={16} />}
+          <button
             onClick={onVoice}
-            className={
-              isDarkTone
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all ${isDarkTone
                 ? "bg-white/10 hover:bg-white/20 text-white border border-white/15"
-                : undefined
-            }
+                : "bg-[#e0e5ec] text-slate-600 shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:shadow-[inset_4px_4px_8px_#b8b9be,inset_-4px_-4px_8px_#ffffff] hover:text-slate-800"
+              }`}
           >
+            <IconMicrophone size={16} />
             Voice
-          </Button>
+          </button>
         )}
       </Group>
     </div>

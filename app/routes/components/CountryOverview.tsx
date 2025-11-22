@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
-import { Button, Badge, Title, Text, ActionIcon } from "@mantine/core";
+import { Badge, Title, Text, ActionIcon } from "@mantine/core";
 import {
-  IconArrowLeft,
   IconBroadcast,
   IconMapPin,
   IconPlayerPauseFilled,
@@ -11,7 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { CountryFlag } from "~/components/CountryFlag";
 import type { Country, Station } from "~/types/radio";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 type CountryOverviewProps = {
   selectedCountry: string;
@@ -36,6 +35,39 @@ export function CountryOverview({
   onNext,
   onPrev,
 }: CountryOverviewProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Floating music notes animation
+  const floatingNotes = useMemo(
+    () =>
+      Array.from({ length: 18 }).map((_, i) => {
+        const seed = i / 18;
+        const isEven = i % 2 === 0;
+        return {
+          id: i,
+          delay: seed * 6,
+          duration: 12 + seed * 8,
+          startX: (i * 5.5) % 100,
+          endX: ((i * 5.5) + (isEven ? 60 : -60)) % 100,
+          startY: 115,
+          midY: 40 + (seed * 30),
+          endY: -25 - (seed * 15),
+          rotation: i * 25,
+          scale1: 0.6 + (seed * 0.5),
+          scale2: 1.1 + (seed * 0.6),
+          opacity: 0.5 + (seed * 0.35),
+          note: ['🎵', '🎶', '🎼', '🎹', '🎺', '🎸', '🎻', '🎤', '🎧', '🎙️'][i % 10],
+          blur: seed * 0.3,
+          color: isEven ? 'rgba(99, 102, 241, 0.3)' : 'rgba(168, 85, 247, 0.3)',
+        };
+      }),
+    []
+  );
+
   // Generate frequency for now playing station
   const frequency = useMemo(() => {
     if (!nowPlaying) return "0.0";
@@ -57,30 +89,101 @@ export function CountryOverview({
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="rounded-2xl border border-slate-200 bg-white/50 px-6 py-8 shadow-sm md:px-10 md:py-10"
+      className="relative overflow-hidden rounded-2xl border border-slate-300/30 bg-[#e0e5ec] px-6 py-8 md:px-10 md:py-10"
     >
-      <div className="relative z-10 space-y-6">
-        {/* Top Row: Back Button & Badges */}
-        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <Button
-            variant="subtle"
-            radius="xl"
-            leftSection={<IconArrowLeft size={18} />}
-            onClick={onBack}
-            className="text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+      {/* Animated Gradient Orbs Background */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-60">
+        <motion.div
+          className="absolute w-96 h-96 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+            filter: 'blur(60px)',
+          }}
+          animate={{
+            x: ['-20%', '120%'],
+            y: ['-10%', '110%'],
+            scale: isPlaying ? [1, 1.8, 1] : [1, 1.2, 1],
+            opacity: isPlaying ? [0.4, 0.7, 0.4] : [0.2, 0.3, 0.2],
+          }}
+          transition={{
+            duration: isPlaying ? 20 : 35,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
+        <motion.div
+          className="absolute w-80 h-80 rounded-full"
+          style={{
+            background: 'radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, transparent 70%)',
+            filter: 'blur(50px)',
+          }}
+          animate={{
+            x: ['120%', '-20%'],
+            y: ['110%', '-10%'],
+            scale: isPlaying ? [1.2, 0.8, 1.2] : [1, 1, 1],
+            opacity: isPlaying ? [0.5, 0.8, 0.5] : [0.2, 0.3, 0.2],
+          }}
+          transition={{
+            duration: isPlaying ? 25 : 40,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
+      </div>
+
+      {/* Floating Music Notes Animation - Synced with Playing State */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {isMounted && floatingNotes.map((note) => (
+          <motion.div
+            key={note.id}
+            className="absolute text-2xl md:text-3xl"
+            initial={{
+              x: `${note.startX}vw`,
+              y: `${note.startY}%`,
+              rotate: note.rotation,
+              scale: note.scale1,
+              opacity: 0,
+            }}
+            animate={isPlaying ? {
+              y: [`${note.startY}%`, `${note.midY}%`, `${note.endY}%`],
+              x: [`${note.startX}vw`, `${(note.startX + note.endX) / 2}vw`, `${note.endX}vw`],
+              rotate: [note.rotation, note.rotation + 180, note.rotation + 360],
+              scale: [note.scale1, note.scale2 * 1.2, note.scale1 * 0.6],
+              opacity: [0, note.opacity * 1.3, note.opacity, 0],
+            } : {
+              y: [`${note.startY}%`, `${note.midY + 20}%`, `${note.endY + 30}%`],
+              x: [`${note.startX}vw`, `${note.startX}vw`, `${note.startX}vw`],
+              rotate: [note.rotation, note.rotation + 90, note.rotation + 180],
+              scale: [note.scale1 * 0.6, note.scale2 * 0.7, note.scale1 * 0.4],
+              opacity: [0, note.opacity * 0.3, note.opacity * 0.2, 0],
+            }}
+            transition={{
+              duration: isPlaying ? note.duration * 0.8 : note.duration * 1.8,
+              delay: note.delay,
+              repeat: Infinity,
+              ease: isPlaying ? "easeInOut" : "easeOut",
+            }}
+            style={{
+              filter: `blur(${note.blur}px) drop-shadow(0 2px 8px ${note.color})`,
+              color: note.color,
+            }}
           >
-            Back to world view
-          </Button>
-          <div className="flex items-center gap-3">
-            <Badge
-              radius="xl"
-              size="lg"
-              leftSection={<IconBroadcast size={16} />}
-              className="bg-slate-100 text-slate-600 border border-slate-200"
-            >
-              {stationCount.toLocaleString()} stations catalogued
-            </Badge>
-          </div>
+            {note.note}
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="relative z-10 space-y-6">
+        {/* Top Row: Just Badges */}
+        <div className="flex items-center justify-end">
+          <Badge
+            radius="xl"
+            size="lg"
+            leftSection={<IconBroadcast size={16} />}
+            className="bg-white/60 text-slate-600 border border-slate-300/50 shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff]"
+          >
+            {stationCount.toLocaleString()} stations catalogued
+          </Badge>
         </div>
 
         {/* Country Info & Now Playing Combined */}
@@ -91,7 +194,7 @@ export function CountryOverview({
               iso={selectedCountryMeta?.iso_3166_1}
               title={`${selectedCountry} flag`}
               size={64}
-              className="rounded-xl shadow-sm border border-slate-100"
+              className="rounded-xl shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] border border-slate-200/50"
             />
             <div>
               <Title order={1} className="text-3xl md:text-4xl font-bold text-slate-900">
@@ -120,7 +223,7 @@ export function CountryOverview({
             </div>
           ) : (
             selectedCountryMeta && (
-              <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm text-slate-600 shadow-sm">
+              <div className="rounded-xl border border-slate-300/30 bg-white/60 px-6 py-4 text-sm text-slate-600 shadow-[2px_2px_4px_#b8b9be,-2px_-2px_4px_#ffffff]">
                 <div className="flex items-center gap-2">
                   <IconMapPin size={16} />
                   Passport code: {selectedCountryMeta.iso_3166_1}
@@ -135,7 +238,7 @@ export function CountryOverview({
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
             {/* Tuner Scale */}
             <div className="flex-1">
-              <div className="relative h-20 w-full overflow-hidden rounded-2xl bg-slate-100 shadow-inner">
+              <div className="relative h-20 w-full overflow-hidden rounded-2xl bg-white/40 border border-slate-300/30 shadow-[inset_3px_3px_6px_#b8b9be,inset_-3px_-3px_6px_#ffffff]">
                 {/* Scale Ticks */}
                 <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-between px-6">
                   {ticks.map((tick, i) => {
@@ -163,7 +266,7 @@ export function CountryOverview({
 
                 {/* Red Needle */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-full w-0.5 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]" />
+                  <div className="h-full w-0.5 bg-red-500" />
                   <div className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 bg-red-500" />
                 </div>
               </div>
@@ -187,7 +290,7 @@ export function CountryOverview({
                 variant="light"
                 color="gray"
                 onClick={onPrev}
-                className="bg-slate-100 hover:bg-slate-200"
+                className="bg-[#e0e5ec] text-slate-600 shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] active:shadow-[inset_3px_3px_6px_#b8b9be,inset_-3px_-3px_6px_#ffffff] border-0"
               >
                 <IconPlayerSkipBackFilled size={20} />
               </ActionIcon>
@@ -196,7 +299,7 @@ export function CountryOverview({
                 size="xl"
                 radius="xl"
                 onClick={onPlayPause}
-                className="bg-slate-900 text-white hover:bg-slate-800 shadow-md"
+                className="bg-slate-900 text-white hover:bg-slate-800 shadow-[4px_4px_8px_#b8b9be,-4px_-4px_8px_#ffffff] active:scale-95 transition-transform border-0"
               >
                 {isPlaying ? (
                   <IconPlayerPauseFilled size={24} />
@@ -211,7 +314,7 @@ export function CountryOverview({
                 variant="light"
                 color="gray"
                 onClick={onNext}
-                className="bg-slate-100 hover:bg-slate-200"
+                className="bg-[#e0e5ec] text-slate-600 shadow-[3px_3px_6px_#b8b9be,-3px_-3px_6px_#ffffff] active:shadow-[inset_3px_3px_6px_#b8b9be,inset_-3px_-3px_6px_#ffffff] border-0"
               >
                 <IconPlayerSkipForwardFilled size={20} />
               </ActionIcon>

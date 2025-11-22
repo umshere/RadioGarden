@@ -182,17 +182,34 @@ export const usePlayerStore = create<PlayerState>(
         const preserveQueue = options?.preserveQueue ?? false;
         const shouldAutoplay = options?.autoPlay ?? true;
         const currentQueue = get().queue;
-        const nextQueue = preserveQueue
-          ? currentQueue
-          : [
-              station,
-              ...currentQueue.filter((item) => item.uuid !== station.uuid),
-            ];
+
+        // Determine the new queue and index
+        let nextQueue: Station[];
+        let nextIndex: number;
+
+        if (preserveQueue) {
+          // Keep the existing queue and find the station's index
+          nextQueue = currentQueue;
+          nextIndex = currentQueue.findIndex((s) => s.uuid === station.uuid);
+
+          // If station not found in queue, add it and use that index
+          if (nextIndex === -1) {
+            nextQueue = [...currentQueue, station];
+            nextIndex = nextQueue.length - 1;
+          }
+        } else {
+          // Replace queue with this station first, then others
+          nextQueue = [
+            station,
+            ...currentQueue.filter((item) => item.uuid !== station.uuid),
+          ];
+          nextIndex = 0;
+        }
 
         set({
           nowPlaying: station,
           queue: nextQueue,
-          currentStationIndex: preserveQueue ? get().currentStationIndex : 0,
+          currentStationIndex: nextIndex,
           isPlaying: shouldAutoplay && Boolean(streamUrl),
         });
 

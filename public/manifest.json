@@ -4,14 +4,14 @@
     "description": "Tune Into the World - A cozy web audio app for global radio exploration",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#1e1b4b",
-    "theme_color": "#1e1b4b",
+    "background_color": "#e0e5ec",
+    "theme_color": "#e0e5ec",
     "orientation": "portrait-primary",
     "icons": [
         {
-            "src": "/icon.png",
-            "sizes": "512x512",
-            "type": "image/png",
+            "src": "/favicon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
             "purpose": "any"
         }
     ]

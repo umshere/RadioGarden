@@ -54,7 +54,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
       stations = rankStations(normalized);
     }
 
-    return json({ countries, stations, selectedCountry: country });
+    return json(
+      { countries, stations, selectedCountry: country },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error loading radio data:", error);
     return json({ countries: [], stations: [], selectedCountry: country });

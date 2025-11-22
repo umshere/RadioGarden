@@ -1,12 +1,12 @@
 import type { LinksFunction } from "@remix-run/node";
-import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
+import { Links, Meta, Outlet, Scripts, ScrollRestoration, useNavigation } from "@remix-run/react";
 import { MantineProvider, createTheme } from "@mantine/core";
 import { useEffect, useRef } from "react";
 import { usePlayerStore } from "~/state/playerStore";
 import stylesheet from "./tailwind.css?url";
 import AppHeader from "~/components/AppHeader";
 import PlayerDock from "~/components/PlayerDock";
-import MobileTabBar from "~/components/MobileTabBar";
+import MobileSidebarMenu from "~/components/MobileSidebarMenu";
 import { TuningOverlay } from "~/components/TuningOverlay";
 
 export const links: LinksFunction = () => [
@@ -18,7 +18,6 @@ export const links: LinksFunction = () => [
     href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Poppins:wght@500;600;700&display=swap",
   },
   { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-  { rel: "alternate icon", type: "image/png", href: "/icon.png" },
   { rel: "manifest", href: "/manifest.json" },
 ];
 
@@ -109,6 +108,8 @@ const theme = createTheme({
 
 export default function App() {
   const previousTitleRef = useRef("Radio Passport");
+  const navigation = useNavigation();
+  const isNavigating = navigation.state !== "idle";
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -160,6 +161,21 @@ export default function App() {
       >
         <MantineProvider theme={theme} defaultColorScheme="light">
           <>
+            {/* Loading progress bar */}
+            {isNavigating && (
+              <div className="fixed top-0 left-0 right-0 z-[200] h-1 bg-[#e0e5ec]">
+                <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-[loading_1s_ease-in-out_infinite]"
+                  style={{
+                    animation: "loading 1s ease-in-out infinite",
+                    transformOrigin: "left"
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Mobile Sidebar Menu */}
+            <MobileSidebarMenu />
+
             {/* Global app shell header */}
             <AppHeader />
 
@@ -170,7 +186,6 @@ export default function App() {
 
             {/* Player surfaces */}
             <PlayerDock />
-            <MobileTabBar />
             <TuningOverlay />
             <GlobalAudioBridge />
           </>
